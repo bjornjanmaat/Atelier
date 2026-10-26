@@ -12,3 +12,6 @@ Atelier moves your academic workflow out of the browser and into an intentional,
 - Integrated LLM Intelligence: Synthesize dense readings, query your course syllabus, and break down multi-step assignment prompts into clear, actionable study tasks.
 - Unified Calendar & Inbox: Keep track of upcoming deadlines, exams, and lecture events alongside a native interface for Canvas messaging and correspondence.
 - Built-in Notebooks: Keep contextual markdown notes alongside lecture files and rubrics without switching between external applications.
+
+## Intended Use
+Atelier is intended strictly for personal, local use. It connects directly to Canvas using your own generated personal Access Token, and all your data remains stored on your local device.
