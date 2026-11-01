@@ -1,0 +1,2675 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atelier</title>
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <script>
+    (function () {
+      try {
+        const platform = (window.canvasDesktop && window.canvasDesktop.platform)
+          ? window.canvasDesktop.platform
+          : (navigator.userAgent.includes('Windows') ? 'win32' : (navigator.userAgent.includes('Mac') ? 'darwin' : 'linux'));
+        document.documentElement.setAttribute('data-platform', platform);
+      } catch (e) { }
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <!-- Main App Layout (Sidebar + Main Content Area) -->
+  <div class="app-layout" id="appLayout">
+    <!-- Left Navigation Sidebar -->
+    <aside class="app-sidebar hidden" id="appSidebar">
+      <!-- Sidebar Top Bar with Drag Region and Collapse Button -->
+      <div class="sidebar-topbar">
+        <div class="sidebar-drag-region"></div>
+        <button class="sidebar-toggle-btn" id="sidebarCollapseBtn" title="Collapse Sidebar (⌘B)"
+          aria-label="Collapse Sidebar">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="9" y1="3" x2="9" y2="21"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Sidebar Brand / Logo & Main Navigation Header -->
+      <div class="sidebar-header">
+        <div class="sidebar-brand-badge" id="sidebarBrandLogo" title="Atelier">
+          <img src="assets/logo.png" alt="Atelier Logo" class="sidebar-brand-icon" />
+          <span class="sidebar-brand-text">Atelier</span>
+        </div>
+
+        <nav class="sidebar-main-nav" aria-label="Main Navigation">
+          <button class="sidebar-nav-item active" id="sidebarHomeBtn" title="Dashboard">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span class="sidebar-nav-label">Dashboard</span>
+          </button>
+
+          <button class="sidebar-nav-item" id="sidebarCalendarBtn" title="Calendar">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span class="sidebar-nav-label">Calendar</span>
+          </button>
+
+          <button class="sidebar-nav-item" id="sidebarAssignmentsBtn" title="Assignments">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 11l3 3L22 4"></path>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+            <span class="sidebar-nav-label">Assignments</span>
+            <span class="sidebar-nav-badge hidden" id="sidebarAssignmentsBadge">0</span>
+          </button>
+
+          <button class="sidebar-nav-item" id="sidebarAnnouncementsBtn" title="Announcements">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span class="sidebar-nav-label">Announcements</span>
+            <span class="sidebar-nav-badge hidden" id="sidebarAnnouncementsBadge">0</span>
+          </button>
+
+          <button class="sidebar-nav-item" id="sidebarInboxBtn" title="Inbox">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+              <path
+                d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z">
+              </path>
+            </svg>
+            <span class="sidebar-nav-label">Inbox</span>
+            <span class="sidebar-inbox-badge hidden" id="sidebarInboxBadge">0</span>
+          </button>
+
+          <button class="sidebar-nav-item" id="sidebarNotesBtn" title="Notes">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            <span class="sidebar-nav-label">Notes</span>
+          </button>
+
+          <button class="sidebar-nav-item" id="sidebarAiBtn" title="Assistant">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"></path>
+            </svg>
+            <span class="sidebar-nav-label">Assistant</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- My Courses Section -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-title">My courses</span>
+          <div class="sidebar-section-header-actions">
+            <span class="sidebar-badge" id="sidebarCoursesCount">0</span>
+            <button type="button" class="sidebar-section-action-btn" id="sidebarCoursesSettingsBtn"
+              title="Course Settings (Archive / Restore)" aria-label="Course Settings">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+                <circle cx="12" cy="5" r="2"></circle>
+                <circle cx="12" cy="12" r="2"></circle>
+                <circle cx="12" cy="19" r="2"></circle>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="sidebar-courses-list" id="sidebarCoursesList">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+      <!-- Sidebar Footer Profile Card -->
+      <div class="sidebar-footer">
+        <button class="sidebar-profile-card" id="sidebarProfileCard" title="Settings">
+          <div class="sidebar-profile-avatar-wrap">
+            <img id="sidebarUserAvatar" src="" alt="Profile Avatar" class="sidebar-profile-avatar hidden" />
+            <div id="sidebarAvatarFallback" class="sidebar-avatar-fallback">
+              <svg viewBox="0 0 24 24" width="60%" height="60%" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+          </div>
+          <div class="sidebar-profile-info">
+            <span class="sidebar-profile-name" id="sidebarUserName">Canvas User</span>
+            <span class="sidebar-profile-student-id" id="sidebarUserStudentId">Student ID</span>
+          </div>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="app-main-wrap" id="appMainWrap">
+      <!-- Window Header Bar (Seamless) -->
+      <header class="titlebar" id="titlebar">
+        <div class="titlebar-drag-region"></div>
+
+        <div class="titlebar-left" id="titlebarLeft">
+          <!-- Expand Sidebar Button (Shown when sidebar is collapsed) -->
+          <button class="sidebar-toggle-btn expand-btn hidden" id="sidebarExpandBtn" title="Expand Sidebar (⌘B)"
+            aria-label="Expand Sidebar">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="3" x2="9" y2="21"></line>
+            </svg>
+          </button>
+
+          <!-- Browser History Navigation Buttons (Back / Forward / Reload) -->
+          <div class="browser-nav-controls hidden" id="browserNavControls">
+            <button class="browser-nav-btn" id="browserNavBackBtn" title="Go back (Alt+Left or ⌘[)" aria-label="Go back"
+              disabled>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+            <button class="browser-nav-btn" id="browserNavForwardBtn" title="Go forward (Alt+Right or ⌘])"
+              aria-label="Go forward" disabled>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+            <button class="browser-nav-btn" id="browserNavReloadBtn" title="Reload current tab (⌘R)"
+              aria-label="Reload tab">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 4v6h-6"></path>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Course Page Breadcrumb (Preserved for backward compatibility) -->
+          <div class="nav-breadcrumb hidden" id="titlebarCourseBreadcrumb">
+            <span class="breadcrumb-course-name" id="titlebarCourseName">Course</span>
+          </div>
+        </div>
+
+        <!-- Browser Tabs Bar -->
+        <div class="browser-tab-bar hidden" id="browserTabBar">
+          <div class="browser-tab-scroll-container" id="browserTabScrollContainer">
+            <div class="browser-tab-list" id="browserTabList">
+              <!-- Dynamically populated tab items -->
+            </div>
+          </div>
+          <button class="browser-new-tab-btn" id="browserNewTabBtn" title="New Tab (⌘T)" aria-label="Open New Tab">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Centralized Global Search Bar (Top Trigger) -->
+        <button type="button" class="top-search-trigger-bar hidden" id="topSearchTriggerBar" title="Search all content"
+          aria-label="Open search">
+          <svg class="top-search-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <span class="top-search-placeholder" id="topSearchPlaceholder">Search...</span>
+        </button>
+
+        <!-- Right Corner: Actions -->
+        <div class="titlebar-actions hidden" id="titlebarActions">
+          <div class="connection-status-pill offline hidden" id="connectionStatus" title="Offline Status">
+            <span class="status-dot"></span>
+            <span class="status-text">Offline</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="app-body-container" id="appBodyContainer">
+        <main class="app-container">
+          <!-- ======================================================================
+             0. App Initializing Loading Screen
+             ====================================================================== -->
+          <section class="app-loading-screen" id="appLoadingScreen">
+            <div class="loading-brand-card">
+              <div class="loading-logo-wrap">
+                <img src="assets/logo.png" alt="Atelier" class="loading-app-logo" />
+                <div class="loading-glow"></div>
+              </div>
+              <div class="loading-text-group">
+                <h2 class="loading-brand-title">Atelier</h2>
+                <div class="loading-status-wrap">
+                  <span class="loading-spinner-ring"></span>
+                  <span class="loading-status-text" id="loadingStatusText">Connecting to your courses...</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ======================================================================
+             1. Initial Setup / Auth Section
+             ====================================================================== -->
+          <section class="auth-section hidden" id="authSection">
+            <div class="auth-card">
+              <div class="auth-layout-grid">
+                <!-- Left Column: Primary Credentials Input Form -->
+                <div class="auth-main-pane">
+                  <div class="auth-hero">
+                    <div class="glow-orb"></div>
+                    <div class="auth-brand-logo-wrap">
+                      <img src="assets/logo.png" alt="Atelier Logo" class="auth-app-logo" />
+                    </div>
+                    <h1>Connect Your Canvas Account</h1>
+                    <p class="subtitle">Access your courses, announcements, modules, files, assignments, and grades
+                      securely in a native desktop environment.</p>
+                  </div>
+
+                  <form class="auth-form" id="initialAuthForm">
+                    <div class="form-group">
+                      <div class="form-label-row">
+                        <label for="canvasDomain">Canvas Instance Host</label>
+                      </div>
+                      <div class="input-wrapper input-wrapper-lg">
+                        <span class="input-prefix">https://</span>
+                        <input type="text" id="canvasDomain" placeholder="canvas.instructure.com" required
+                          spellcheck="false" autocomplete="off" />
+                      </div>
+                    </div>
+
+                    <div class="form-group">
+                      <div class="form-label-row">
+                        <label for="accessToken">Canvas Access Token</label>
+                      </div>
+                      <div class="input-wrapper input-wrapper-lg password-input-wrap">
+                        <span class="input-icon-prefix">
+                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                          </svg>
+                        </span>
+                        <input type="password" id="accessToken" class="font-mono-input"
+                          placeholder="Paste your Canvas Personal Access Token..." required spellcheck="false"
+                          autocomplete="off" />
+                        <button type="button" class="toggle-password-btn" id="toggleTokenVisibility"
+                          title="Toggle token visibility">
+                          <svg id="eyeIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="7" r="3"></circle>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="form-options">
+                      <label class="checkbox-label">
+                        <input type="checkbox" id="rememberCredentials" checked />
+                        <span class="checkbox-custom"></span>
+                        <span>Remember credentials on this device</span>
+                      </label>
+                    </div>
+
+                    <div class="error-banner hidden" id="authError">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                      </svg>
+                      <span class="error-msg" id="authErrorMsg">An error occurred</span>
+                    </div>
+
+                    <div class="auth-buttons">
+                      <button type="submit" class="primary-button btn-connect-hero" id="submitAuthBtn">
+                        <span class="btn-spinner hidden" id="authSpinner"></span>
+                        <span class="btn-label">Connect</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                <!-- Right Column: Interactive Setup Guide -->
+                <div class="auth-side-pane">
+                  <div class="token-guide-card">
+                    <div class="guide-header-badge">
+                      <div class="guide-header-icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                        </svg>
+                      </div>
+                      <h3 class="guide-title">Quick Setup Guide</h3>
+                    </div>
+
+                    <ol class="guide-steps-list">
+                      <li class="guide-step-item">
+                        <span class="step-num">1</span>
+                        <div class="step-body">
+                          <strong>Open Canvas Portal</strong>
+                          <span>Log in to your school's Canvas web portal in your web browser.</span>
+                        </div>
+                      </li>
+                      <li class="guide-step-item">
+                        <span class="step-num">2</span>
+                        <div class="step-body">
+                          <strong>Go to Settings</strong>
+                          <span>Click <strong>Account</strong> in the left sidebar, then select
+                            <strong>Settings</strong>.</span>
+                        </div>
+                      </li>
+                      <li class="guide-step-item">
+                        <span class="step-num">3</span>
+                        <div class="step-body">
+                          <strong>Find Approved Integrations</strong>
+                          <span>Scroll down to the <em>Approved Integrations</em> section.</span>
+                        </div>
+                      </li>
+                      <li class="guide-step-item">
+                        <span class="step-num">4</span>
+                        <div class="step-body">
+                          <strong>Generate New Token</strong>
+                          <span>Click <strong>+ New Access Token</strong>, enter a purpose (e.g. "Atelier"), select an
+                            expiration date, and generate.</span>
+                        </div>
+                      </li>
+                      <li class="guide-step-item">
+                        <span class="step-num">5</span>
+                        <div class="step-body">
+                          <strong>Paste & Connect</strong>
+                          <span>Enter your school's Canvas instance URL (e.g. <code>canvas.harvard.edu</code>), paste
+                            your
+                            token string into the form on the left, and connect.</span>
+                        </div>
+                      </li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ======================================================================
+         2. Home Screen: Enrolled Courses Dashboard
+         ====================================================================== -->
+          <section class="home-section hidden" id="homeSection">
+            <!-- Home Welcome Greeting Header -->
+            <div class="home-welcome-header" id="homeWelcomeHeader">
+              <h1 class="home-welcome-title" id="homeGreetingName">Good morning, Student</h1>
+            </div>
+
+            <!-- Dashboard Layout: Top 3 Widgets, followed by full-width Courses Grid -->
+            <div class="home-dashboard-layout" id="homeDashboardLayout">
+              <!-- Top Row: Assignments, Announcements, and Calendar Widgets -->
+              <div class="home-top-widgets-row" id="homeTopWidgetsRow">
+                <!-- 1. Assignments Widget -->
+                <div class="home-widget-card home-widget-assignments" id="homeWidgetAssignments">
+                  <div class="home-widget-header">
+                    <h3 class="home-widget-title" id="homeAssignmentsWidgetTitle">Assignments</h3>
+                  </div>
+
+                  <!-- Single Lime Card (Not Tilted, Shows only assignments for this week) -->
+                  <div class="dash-stat-cards-row single-card" id="homeAssignmentsStatCards">
+                    <div class="dash-stat-card highlight-lime-card untilted" id="dashAssignCardPending">
+                      <div class="dash-stat-top-label">Due in the next 7 days</div>
+                      <div class="dash-stat-hero-wrap">
+                        <span class="dash-stat-hero-num" id="dashAssignHeroPending">0</span>
+                      </div>
+                      <div class="dash-stat-dots" id="dashAssignDotsPending" aria-label="Progress dots"></div>
+                    </div>
+                  </div>
+
+                  <div class="home-assignments-body" id="homeAssignmentsBody">
+                    <span class="home-widget-badge hidden" id="homeAssignmentsBadge" style="display: none;">0</span>
+                    <div class="home-assignments-scroll-list" id="homeAssignmentsScrollList">
+                      <!-- Populated by JS -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 2. Announcements Widget -->
+                <div class="home-widget-card home-widget-announcements" id="homeWidgetAnnouncements">
+                  <div class="home-widget-header">
+                    <h3 class="home-widget-title">Announcements</h3>
+                  </div>
+
+                  <!-- Single Hero Card: Displays the latest announcement -->
+                  <div class="dash-stat-cards-row single-card" id="homeAnnouncementsStatCards">
+                    <button type="button" class="dash-stat-card companion-stat-card dash-announce-hero-card" id="dashAnnounceCardHero">
+                      <div class="dash-announce-hero-header">
+                        <div class="dash-announce-hero-course" id="dashAnnounceHeroCourseWrap">
+                          <span class="home-dash-color-dot" id="dashAnnounceHeroDot"></span>
+                          <span id="dashAnnounceHeroCourse">Course</span>
+                        </div>
+                        <span class="dash-announce-hero-date" id="dashAnnounceHeroDate">Recent</span>
+                      </div>
+                      <div class="dash-announce-hero-body">
+                        <div class="dash-announce-hero-title" id="dashAnnounceHeroTitle">No announcements yet</div>
+                        <div class="dash-announce-hero-snippet" id="dashAnnounceHeroSnippet">Recent announcements from
+                          your courses will appear here.</div>
+                      </div>
+                    </button>
+                  </div>
+
+                  <!-- Scrollable list of announcements -->
+                  <div class="home-announcements-body" id="homeAnnouncementsBody">
+                    <span class="home-widget-badge hidden" id="homeAnnouncementsBadge" style="display: none;">0</span>
+                    <div class="home-announcements-scroll-list" id="homeAnnouncementsScrollList">
+                      <!-- Populated by JS -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 3. Calendar Widget (1-day view with Vertical Timeline) -->
+                <div class="home-widget-card home-widget-calendar" id="homeWidgetCalendar">
+                  <div class="home-widget-header">
+                    <h3 class="home-widget-title">Calendar</h3>
+                    <div class="home-calendar-nav">
+                      <button type="button" class="home-cal-nav-btn" id="homeCalPrevBtn" title="Previous Day"
+                        aria-label="Previous Day">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                          stroke-width="2.5">
+                          <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                      </button>
+                      <span class="home-calendar-month-pill" id="homeCalendarMonthLabel">Today</span>
+                      <button type="button" class="home-cal-nav-btn" id="homeCalNextBtn" title="Next Day"
+                        aria-label="Next Day">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                          stroke-width="2.5">
+                          <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Events List Container -->
+                  <div class="home-calendar-body" id="homeCalendarBody">
+                    <div class="home-calendar-events-list" id="homeCalendarGrid">
+                      <!-- Populated dynamically via renderCalendarDayView() -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Courses Grid Area (Spaces out over all columns) -->
+              <div class="courses-grid" id="coursesGrid"></div>
+
+              <!-- Empty State -->
+              <div class="empty-courses-state hidden" id="emptyCoursesState">
+                <div class="empty-icon-wrap">
+                  <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                  </svg>
+                </div>
+                <h3>No Courses Found</h3>
+                <p>No course enrollments match your current filters.</p>
+                <button class="secondary-button" id="resetCourseFilterBtn">Reset Filters</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- ======================================================================
+         3. Dedicated Course Page (Announcements, Modules, Assignments, Grades)
+         ====================================================================== -->
+          <section class="course-page-section hidden" id="coursePageSection">
+            <!-- Course Hero Banner -->
+            <div class="course-hero-card">
+              <div class="course-hero-banner-accent" id="courseHeroAccent"></div>
+              <div class="course-hero-content">
+                <div class="course-hero-top-row">
+                  <div class="course-header-title-wrap">
+                    <h1 class="course-header-title" id="courseHeaderTitle">Course Title</h1>
+                  </div>
+                  <div class="course-hero-actions">
+                    <button class="icon-button course-hero-action-btn" id="courseCustomizeBtn"
+                      title="Customize Course Color & Icon" aria-label="Customize Course Color & Icon">
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M12 20h9"></path>
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                      </svg>
+                    </button>
+                    <button class="icon-button course-hero-action-btn" id="courseOpenExternalBtn"
+                      title="Open in Canvas Web Browser" aria-label="Open in Canvas Web Browser">
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Course Tabs Bar -->
+              <div class="course-tabs-bar">
+                <button class="course-tab-btn active" data-tab="announcements" id="tabBtnAnnouncements">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                  <span>Announcements</span>
+                </button>
+
+                <button class="course-tab-btn" data-tab="modules" id="tabBtnModules">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                    <polyline points="2 17 12 22 22 17"></polyline>
+                    <polyline points="2 12 12 17 22 12"></polyline>
+                  </svg>
+                  <span>Modules</span>
+                </button>
+
+                <button class="course-tab-btn" data-tab="assignments" id="tabBtnAssignments">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                  </svg>
+                  <span>Assignments</span>
+                </button>
+
+                <button class="course-tab-btn" data-tab="grades" id="tabBtnGrades">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                  <span>Grades</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Tab Content Area -->
+            <div class="course-tab-content-area">
+              <!-- 1. Announcements Tab Pane -->
+              <div class="tab-pane active" id="paneAnnouncements">
+                <div class="announcements-list" id="announcementsList">
+                  <!-- Dynamically populated announcements -->
+                </div>
+                <div class="empty-tab-state hidden" id="emptyAnnouncementsState">
+                  <p>No announcements found.</p>
+                </div>
+              </div>
+
+              <!-- 2. Modules Tab Pane -->
+              <div class="tab-pane hidden" id="paneModules">
+                <div class="modules-accordion" id="modulesList">
+                  <!-- Dynamically populated modules -->
+                </div>
+                <div class="empty-tab-state hidden" id="emptyModulesState">
+                  <p>No learning modules published for this course.</p>
+                </div>
+              </div>
+
+              <!-- 3. Assignments Tab Pane -->
+              <div class="tab-pane hidden" id="paneAssignments">
+                <div class="tab-pane-header">
+                  <div class="assignments-filter-pills dedicated-pills-row">
+                    <button class="dedicated-pill-btn filter-pill active" data-assign-filter="all">
+                      <span>All</span>
+                      <span class="pill-count" id="courseAssignCountAll">0</span>
+                    </button>
+                    <button class="dedicated-pill-btn filter-pill" data-assign-filter="upcoming">
+                      <span>Upcoming</span>
+                      <span class="pill-count" id="courseAssignCountUpcoming">0</span>
+                    </button>
+                    <button class="dedicated-pill-btn filter-pill" data-assign-filter="submitted">
+                      <span>Submitted / Graded</span>
+                      <span class="pill-count" id="courseAssignCountSubmitted">0</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="assignments-list assignments-cards-grid" id="assignmentsList">
+                  <!-- Dynamically populated assignments -->
+                </div>
+                <div class="empty-tab-state hidden" id="emptyAssignmentsState">
+                  <p>No assignments found matching the filter.</p>
+                </div>
+              </div>
+
+              <!-- 4. Files Tab Pane -->
+              <div class="tab-pane hidden" id="paneFiles">
+                <div class="tab-pane-header">
+                  <div class="files-toolbar-actions">
+                    <button class="secondary-button small-btn" id="downloadAllFilesBtn"
+                      title="Download all course files to local storage">
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                      </svg>
+                      <span>Download All Locally</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="files-grid" id="courseFilesList">
+                  <!-- Dynamically populated files -->
+                </div>
+                <div class="empty-tab-state hidden" id="emptyFilesState">
+                  <p>No files found matching the search filter.</p>
+                </div>
+              </div>
+
+              <!-- 5. Grades Tab Pane -->
+              <div class="tab-pane hidden" id="paneGrades">
+
+                <!-- Grade Hero Summary -->
+                <div class="grade-overview-card">
+                  <div class="grade-overview-left">
+                    <span class="grade-metric-label">Current Calculated Grade</span>
+                    <div class="grade-score-display">
+                      <span class="grade-big-pct" id="gradeBigPct">96.4%</span>
+                      <span class="grade-big-letter" id="gradeBigLetter">A</span>
+                    </div>
+                    <p class="grade-metric-sub" id="gradeStatusSub">Based on graded assignments and projects</p>
+                  </div>
+
+                  <div class="grade-overview-stats">
+                    <div class="mini-stat-card">
+                      <span class="mini-stat-val" id="gradedItemsCountVal">0 / 0</span>
+                      <span class="mini-stat-label">Graded Deliverables</span>
+                    </div>
+                    <div class="mini-stat-card">
+                      <span class="mini-stat-val" id="totalPointsEarnedVal">0 pts</span>
+                      <span class="mini-stat-label">Total Points Earned</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Graded Items Table -->
+                <div class="grades-table-card">
+                  <div class="card-title-row">
+                    <h3>Itemized Gradebook</h3>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="grades-table">
+                      <thead>
+                        <tr>
+                          <th>Assignment Name</th>
+                          <th>Due Date</th>
+                          <th>Status</th>
+                          <th>Score Received</th>
+                          <th>Points Possible</th>
+                          <th>Percentage</th>
+                        </tr>
+                      </thead>
+                      <tbody id="gradesTableBody">
+                        <!-- Dynamically populated grade rows -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ======================================================================
+          4. Settings & Profile Screen
+          ====================================================================== -->
+          <section class="settings-profile-section hidden" id="settingsProfileSection">
+            <!-- Dedicated Settings Page Header -->
+            <div class="dedicated-page-header">
+              <div class="dedicated-page-title-row">
+                <h1 class="dedicated-page-title">Settings</h1>
+              </div>
+            </div>
+
+            <div class="settings-page-container">
+              <!-- 1. User Profile & Account Card -->
+              <div class="settings-card settings-profile-card">
+                <div class="settings-profile-main-row">
+                  <div class="avatar-container">
+                    <img id="userAvatar" src="" alt="Profile Avatar" class="profile-avatar hidden" />
+                    <div id="avatarFallback" class="avatar-fallback">
+                      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                      </svg>
+                    </div>
+                  </div>
+
+                  <div class="settings-profile-info">
+                    <div class="settings-name-row">
+                      <h2 class="settings-user-name" id="userName">Canvas User</h2>
+                    </div>
+                    <div class="settings-meta-row">
+                      <span class="user-handle" id="userHandle">@user</span>
+                      <div class="meta-tag" id="metaEmailTag">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                          <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                        <span id="userEmail">user@institution.edu</span>
+                        <button type="button" class="copy-tag-btn" id="copyEmailBtn" title="Copy Email"
+                          aria-label="Copy Email">
+                          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-card-footer">
+                  <button type="button" class="danger-button small-btn" id="disconnectSettingsBtn">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                      <polyline points="16 17 21 12 16 7"></polyline>
+                      <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    <span>Log Out</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 2. Canvas LMS Connection & Credentials Card -->
+              <div class="settings-card">
+                <div class="settings-card-header">
+                  <div class="settings-card-header-main">
+                    <div class="settings-card-title-group">
+                      <h3 class="settings-card-title">Canvas Connection</h3>
+                    </div>
+                  </div>
+                </div>
+
+                <form class="settings-form" id="settingsForm">
+                  <div class="settings-form-grid">
+                    <div class="settings-field-group">
+                      <label for="settingsDomainInput">Instance Host</label>
+                      <div class="settings-input-wrapper">
+                        <span class="settings-input-prefix">https://</span>
+                        <input type="text" id="settingsDomainInput" placeholder="canvas.instructure.com" required
+                          spellcheck="false" autocomplete="off" />
+                      </div>
+                    </div>
+
+                    <div class="settings-field-group">
+                      <label for="settingsTokenInput">Access Token</label>
+                      <div class="settings-input-wrapper password-input-wrap">
+                        <input type="password" id="settingsTokenInput" placeholder="Canvas Bearer Access Token" required
+                          spellcheck="false" autocomplete="off" />
+                        <button type="button" class="toggle-password-btn" id="toggleSettingsTokenVisibility"
+                          title="Toggle visibility" aria-label="Toggle password visibility">
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="7" r="3"></circle>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="settings-card-footer">
+                    <button type="submit" class="primary-button small-btn" id="saveCredentialsBtn">
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                      </svg>
+                      <span>Save</span>
+                    </button>
+                  </div>
+                  <input type="checkbox" id="settingsRemember" checked style="display: none;" />
+                </form>
+              </div>
+
+              <!-- 3. Schedule & Timetable Feed Card -->
+              <div class="settings-card">
+                <div class="settings-card-header">
+                  <div class="settings-card-header-main">
+                    <div class="settings-card-title-group">
+                      <h3 class="settings-card-title">Schedule Integration</h3>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-card-body">
+                  <div class="settings-field-group">
+                    <label for="settingsScheduleIcalInput">Subscription URL</label>
+                    <div class="settings-input-wrapper">
+                      <span class="settings-input-icon">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                          stroke-width="2">
+                          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                      </span>
+                      <input type="url" id="settingsScheduleIcalInput"
+                        placeholder="https://rooster.example.edu/ical/feed.ics" spellcheck="false" autocomplete="off" />
+                    </div>
+                  </div>
+
+                  <div class="settings-card-footer">
+                    <div class="btn-group">
+                      <button type="button" class="primary-button small-btn" id="btnSaveScheduleUrl">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                          stroke-width="2">
+                          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                          <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                          <polyline points="7 3 7 8 15 8"></polyline>
+                        </svg>
+                        <span>Save</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 4. Appearance & Theme Setting Card -->
+              <div class="settings-card">
+                <div class="settings-card-header">
+                  <div class="settings-card-header-main">
+                    <div class="settings-card-title-group">
+                      <h3 class="settings-card-title">Appearance</h3>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-card-body">
+                  <div class="theme-preview-grid">
+                    <div class="theme-preview-card" data-theme-select="dark" role="button" tabindex="0">
+                      <div class="theme-mockup-frame dark-mockup">
+                        <div class="mockup-sidebar">
+                          <span class="mock-dot"></span>
+                          <span class="mock-line"></span>
+                          <span class="mock-line"></span>
+                        </div>
+                        <div class="mockup-canvas">
+                          <div class="mock-header"></div>
+                          <div class="mock-card"></div>
+                          <div class="mock-card sm"></div>
+                        </div>
+                      </div>
+                      <div class="theme-card-footer">
+                        <div class="theme-card-info">
+                          <span class="theme-card-name">Dark Mode</span>
+                        </div>
+                        <span class="theme-check-radio">
+                          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"
+                            stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="theme-preview-card" data-theme-select="light" role="button" tabindex="0">
+                      <div class="theme-mockup-frame light-mockup">
+                        <div class="mockup-sidebar">
+                          <span class="mock-dot"></span>
+                          <span class="mock-line"></span>
+                          <span class="mock-line"></span>
+                        </div>
+                        <div class="mockup-canvas">
+                          <div class="mock-header"></div>
+                          <div class="mock-card"></div>
+                          <div class="mock-card sm"></div>
+                        </div>
+                      </div>
+                      <div class="theme-card-footer">
+                        <div class="theme-card-info">
+                          <span class="theme-card-name">Light Mode</span>
+                        </div>
+                        <span class="theme-check-radio">
+                          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"
+                            stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 5. Offline Storage & Cache Card -->
+              <div class="settings-card settings-offline-card">
+                <div class="settings-card-header">
+                  <div class="settings-card-header-main">
+                    <div class="settings-card-title-group">
+                      <h3 class="settings-card-title">Offline Content &amp; Cache</h3>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-card-footer">
+                  <div class="btn-group">
+                    <button type="button" class="secondary-button small-btn" id="btnClearCacheBtn"
+                      title="Clear all local offline cache">
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                      </svg>
+                      <span>Clear All Cache</span>
+                    </button>
+                    <button type="button" class="primary-button small-btn" id="btnPrecacheAllCourses">
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                      </svg>
+                      <span>Save All Content Locally</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 6. Course Management & Archiving Card -->
+              <div class="settings-card" id="settingsCoursesCard">
+                <div class="settings-card-header">
+                  <div class="settings-card-header-main">
+                    <div class="settings-card-title-group">
+                      <h3 class="settings-card-title">Course Visibility &amp; Archiving</h3>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-card-body">
+                  <div class="course-archive-toolbar">
+                    <div class="dedicated-pills-row" style="margin-bottom: 0;">
+                      <button type="button" class="dedicated-pill-btn active" data-settings-archive-filter="all">
+                        <span>All</span>
+                        <span class="pill-count" id="settingsArchiveFilterCountAll">0</span>
+                      </button>
+                      <button type="button" class="dedicated-pill-btn" data-settings-archive-filter="active">
+                        <span>Active</span>
+                        <span class="pill-count" id="settingsArchiveFilterCountActive">0</span>
+                      </button>
+                      <button type="button" class="dedicated-pill-btn" data-settings-archive-filter="archived">
+                        <span>Archived</span>
+                        <span class="pill-count" id="settingsArchiveFilterCountArchived">0</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="course-archive-list" id="settingsCoursesArchiveList">
+                    <!-- Populated dynamically via JS -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ======================================================================
+         Calendar & Timetable Screen
+         ====================================================================== -->
+          <section class="calendar-page-section hidden" id="calendarPageSection">
+            <div class="calendar-page-layout">
+              <div class="calendar-page-main-card">
+                <div class="calendar-page-toolbar">
+                  <div class="home-calendar-nav">
+                    <button type="button" class="icon-button home-cal-nav-btn" id="calPagePrevBtn" title="Previous"
+                      aria-label="Previous">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                        stroke-width="2.4">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                      </svg>
+                    </button>
+                    <span class="home-calendar-month-pill" id="calPageMonthLabel">October 2026</span>
+                    <button type="button" class="icon-button home-cal-nav-btn" id="calPageNextBtn" title="Next"
+                      aria-label="Next">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                        stroke-width="2.4">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                      </svg>
+                    </button>
+                    <button type="button" class="home-cal-today-btn" id="calPageTodayBtn">Today</button>
+                  </div>
+
+                  <div class="calendar-toolbar-right-actions">
+                    <div class="calendar-view-dropdown-wrap" id="calPageViewDropdownContainer">
+                      <button type="button" class="calendar-view-toggle-btn" id="calPageViewDropdownBtn"
+                        title="Select View" aria-haspopup="true" aria-expanded="false">
+                        <span id="calPageViewSelectedLabel">Month</span>
+                        <svg class="dropdown-arrow-icon" viewBox="0 0 24 24" width="12" height="12" fill="none"
+                          stroke="currentColor" stroke-width="2.5">
+                          <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                      </button>
+                      <div class="calendar-view-dropdown-menu hidden" id="calPageViewMenu">
+                        <button type="button" class="calendar-view-menu-item active" data-view="month">
+                          <span>Month</span>
+                          <svg class="view-menu-check" viewBox="0 0 24 24" width="13" height="13" fill="none"
+                            stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                        </button>
+                        <button type="button" class="calendar-view-menu-item" data-view="week">
+                          <span>Week</span>
+                          <svg class="view-menu-check" viewBox="0 0 24 24" width="13" height="13" fill="none"
+                            stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                        </button>
+                        <button type="button" class="calendar-view-menu-item" data-view="3day">
+                          <span>3 Days</span>
+                          <svg class="view-menu-check" viewBox="0 0 24 24" width="13" height="13" fill="none"
+                            stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                        </button>
+                        <button type="button" class="calendar-view-menu-item" data-view="day">
+                          <span>Day</span>
+                          <svg class="view-menu-check" viewBox="0 0 24 24" width="13" height="13" fill="none"
+                            stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <button type="button" class="icon-button" id="calPageSettingsLinkBtn" title="Calendar Settings"
+                      aria-label="Calendar Settings">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path
+                          d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                        </path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="calendar-page-body">
+                  <div class="home-calendar-weekdays" id="calPageWeekdays">
+                    <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                  </div>
+                  <div class="home-calendar-grid" id="calPageGrid">
+                    <!-- Populated dynamically via JS -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ======================================================================
+          Assignments & Due Dates Screen (Across All Courses)
+          ====================================================================== -->
+          <section class="assignments-page-section hidden" id="assignmentsPageSection">
+            <div class="dedicated-page-header">
+              <div class="dedicated-page-title-row">
+                <h1 class="dedicated-page-title">Assignments</h1>
+              </div>
+            </div>
+
+            <!-- Filter Status Pills Row -->
+            <div class="dedicated-pills-row">
+              <button type="button" class="dedicated-pill-btn active" data-status="upcoming">
+                <span>Upcoming</span>
+                <span class="pill-count" id="assignPillCountUpcoming">0</span>
+              </button>
+              <button type="button" class="dedicated-pill-btn" data-status="past-due">
+                <span>Past Due / Missing</span>
+                <span class="pill-count" id="assignPillCountPastDue">0</span>
+              </button>
+              <button type="button" class="dedicated-pill-btn" data-status="completed">
+                <span>Completed / Graded</span>
+                <span class="pill-count" id="assignPillCountCompleted">0</span>
+              </button>
+            </div>
+
+            <!-- Assignments Content Area -->
+            <div class="assignments-page-content" id="assignmentsPageContent">
+              <div class="assignments-cards-grid" id="assignmentsPageGrid">
+                <!-- Dynamically populated via JS -->
+              </div>
+            </div>
+          </section>
+
+          <!-- ======================================================================
+          Announcements Screen (Across All Courses)
+          ====================================================================== -->
+          <section class="announcements-page-section hidden" id="announcementsPageSection">
+            <div class="dedicated-page-header">
+              <div class="dedicated-page-title-row">
+                <h1 class="dedicated-page-title">Announcements</h1>
+              </div>
+            </div>
+
+            <!-- Filter Status Pills Row -->
+            <div class="dedicated-pills-row announcements-pills-row">
+              <div class="announcements-pills-left" style="display:flex; align-items:center; gap:8px;">
+                <button type="button" class="dedicated-pill-btn active" data-ann-filter="all">
+                  <span>All Announcements</span>
+                  <span class="pill-count" id="annPillCountAll">0</span>
+                </button>
+                <button type="button" class="dedicated-pill-btn" data-ann-filter="unread">
+                  <span>Unread</span>
+                  <span class="pill-count" id="annPillCountUnread">0</span>
+                </button>
+              </div>
+              <button type="button" class="dedicated-pill-btn" id="markAllAnnouncementsReadBtn"
+                title="Set all announcements to read" style="margin-left: auto;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="M21.2 8.4c.5.38.8.97.8 1.6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0l8 6Z">
+                  </path>
+                  <path d="m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10"></path>
+                </svg>
+                <span>Read all</span>
+              </button>
+            </div>
+
+            <!-- Announcements Content Area -->
+            <div class="announcements-page-content" id="announcementsPageContent">
+              <div class="announcements-feed-list" id="announcementsPageFeed">
+                <!-- Dynamically populated via JS -->
+              </div>
+            </div>
+          </section>
+
+          <!-- ======================================================================
+         Canvas LMS Inbox & Conversations Screen
+         ====================================================================== -->
+          <section class="inbox-page-section hidden" id="inboxPageSection">
+            <div class="dedicated-page-header">
+              <div class="dedicated-page-title-row">
+                <h1 class="dedicated-page-title">Inbox</h1>
+              </div>
+            </div>
+
+            <!-- Main 2-Column Inbox Container -->
+            <div class="inbox-main-layout">
+              <!-- Left Column: Master Conversation List & Filters -->
+              <div class="inbox-master-col">
+                <!-- Controls directly on the page (no extra layer / rounded rectangle) -->
+                <div class="inbox-sidebar-header">
+                  <button type="button" class="primary-button inbox-new-msg-btn" id="inboxComposeBtn"
+                    title="Compose New Message">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>New message</span>
+                  </button>
+
+                  <div class="inbox-search-filter-row">
+                    <div class="inbox-filter-dropdown-container">
+                      <button type="button" class="icon-button inbox-filter-btn" id="inboxFilterBtn"
+                        title="Filter conversations">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                          stroke-width="2">
+                          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                      </button>
+                      <!-- Filter selection dropdown popover -->
+                      <div class="inbox-filter-menu hidden" id="inboxFilterMenu">
+                        <div class="inbox-filter-header">Folder / Status</div>
+                        <div class="inbox-filter-options" id="inboxScopeFilterOptions">
+                          <!-- Populated by JS: All/Inbox, Unread, Starred, Sent, Archived -->
+                        </div>
+                        <div class="inbox-filter-sep"></div>
+                        <div class="inbox-filter-header">Filter by Course</div>
+                        <div class="inbox-filter-options" id="inboxCourseFilterOptions">
+                          <!-- Populated by JS: All Courses, Course 1, Course 2... -->
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="inbox-search-wrap">
+                      <svg class="inbox-search-icon" viewBox="0 0 24 24" width="14" height="14" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                      </svg>
+                      <input type="text" class="inbox-search-input" id="inboxSearchInput"
+                        placeholder="Filter conversations..." />
+                      <button type="button" class="inbox-search-clear-btn hidden" id="inboxSearchClearBtn"
+                        aria-label="Clear search">✕</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Conversation list with scroll (separate cards) -->
+                <div class="inbox-conversations-list" id="inboxConversationsList">
+                  <!-- Dynamically loaded list items -->
+                </div>
+              </div>
+
+              <!-- Right Column: Conversation Detail / Thread View -->
+              <div class="inbox-detail-pane" id="inboxDetailPane">
+                <!-- Empty Selection Placeholder -->
+                <div class="inbox-thread-empty-state" id="inboxThreadEmptyState">
+                  <div class="inbox-empty-icon-wrap">
+                    <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                  </div>
+                  <h3 class="inbox-empty-title">Select a Conversation</h3>
+                  <p class="inbox-empty-desc">Choose a thread from the list on the left to read messages and reply, or
+                    start a new conversation.</p>
+                  <button type="button" class="primary-button small-btn" id="inboxEmptyComposeBtn">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>New Conversation</span>
+                  </button>
+                </div>
+
+                <!-- Active Conversation Content -->
+                <div class="inbox-thread-view hidden" id="inboxThreadCard">
+                  <!-- Thread Header -->
+                  <div class="inbox-thread-header">
+                    <div class="inbox-thread-header-main">
+                      <div class="inbox-thread-tags">
+                        <span class="inbox-thread-course-tag" id="inboxThreadContextBadge">Course</span>
+                        <span class="inbox-thread-count-tag" id="inboxThreadMessageCount">1 message</span>
+                      </div>
+                      <h3 class="inbox-thread-subject" id="inboxThreadSubject">Conversation Subject</h3>
+                      <div class="inbox-thread-participants-row" id="inboxThreadParticipants">
+                        <!-- Rendered participant tags -->
+                      </div>
+                    </div>
+                    <div class="inbox-thread-actions">
+                      <button type="button" class="icon-button small-btn" id="inboxThreadStarBtn" title="Toggle Star">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                          stroke-width="2">
+                          <polygon
+                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                          </polygon>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Messages Stream -->
+                  <div class="inbox-messages-stream" id="inboxMessagesList">
+                    <!-- Populated dynamically via JS -->
+                  </div>
+
+                  <!-- Reply Composer Box -->
+                  <div class="inbox-reply-section" id="inboxReplySection">
+                    <form class="inbox-reply-form" id="inboxReplyForm">
+                      <div class="inbox-reply-input-wrap">
+                        <textarea class="inbox-reply-textarea" id="inboxReplyText"
+                          placeholder="Write a reply... (⌘+Enter to send)" rows="3"></textarea>
+                      </div>
+                      <div class="inbox-reply-footer">
+                        <span class="inbox-reply-shortcut-hint">Press <strong>⌘ + Enter</strong> to send</span>
+                        <button type="submit" class="primary-button small-btn inbox-reply-send-btn"
+                          id="inboxReplySendBtn">
+                          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                          </svg>
+                          <span>Send Reply</span>
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ======================================================================
+         Course Notes & Study Journal Screen
+         ====================================================================== -->
+          <section class="notes-page-section hidden" id="notesPageSection">
+            <div class="dedicated-page-header">
+              <div class="dedicated-page-title-row">
+                <h1 class="dedicated-page-title">Notes</h1>
+              </div>
+            </div>
+
+            <!-- Main 2-Column Split Layout -->
+            <div class="notes-main-layout">
+              <!-- Left Column: Master Notes List & Filters -->
+              <div class="notes-master-col">
+                <!-- Controls directly on the page (no extra layer / rounded rectangle) -->
+                <div class="notes-sidebar-header">
+                  <button type="button" class="primary-button notes-new-note-btn" id="notesNewBtn"
+                    title="Create New Note (⌘N)">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>New Note</span>
+                  </button>
+
+                  <div class="notes-search-filter-row">
+                    <div class="notes-filter-dropdown-container">
+                      <button type="button" class="icon-button notes-filter-btn" id="notesFilterBtn"
+                        title="Filter by Course">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                          stroke-width="2">
+                          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                      </button>
+                      <!-- Course selection dropdown popover -->
+                      <div class="notes-course-filter-menu hidden" id="notesCourseFilterMenu">
+                        <div class="notes-course-filter-header">Filter by Course</div>
+                        <div class="notes-course-filter-options" id="notesCourseFilterOptions">
+                          <!-- Populated by JS -->
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="notes-search-wrap">
+                      <svg class="notes-search-icon" viewBox="0 0 24 24" width="14" height="14" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                      </svg>
+                      <input type="text" class="notes-search-input" id="notesSearchInput"
+                        placeholder="Search notes..." />
+                      <button type="button" class="notes-search-clear-btn hidden" id="notesSearchClearBtn"
+                        aria-label="Clear search">✕</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Notes List with scroll (separate cards) -->
+                <div class="notes-list" id="notesList">
+                  <!-- Dynamically populated via JS -->
+                </div>
+              </div>
+
+              <!-- Right Column: Note Editor & Context Pane -->
+              <div class="notes-detail-pane" id="notesDetailPane">
+                <!-- Empty State when no note is selected -->
+                <div class="notes-editor-empty-state" id="noteEditorEmptyState">
+                  <div class="notes-empty-icon-wrap">
+                    <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.6"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                      <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                  </div>
+                  <h3 class="notes-empty-title">Select or Create a Note</h3>
+                  <p class="notes-empty-desc">Capture lecture takeaways, link files from modules, associate with
+                    timetable sessions, and write with rich formatting.</p>
+                  <button type="button" class="primary-button small-btn" id="noteEmptyNewBtn">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Create Note</span>
+                  </button>
+                </div>
+
+                <!-- Active Note Editor Form/Card -->
+                <div class="note-editor-card hidden" id="noteEditorCard">
+                  <!-- Top Meta Bar -->
+                  <div class="note-editor-meta-bar">
+                    <div class="note-title-row">
+                      <input type="text" class="note-title-input" id="noteTitleInput" placeholder="Note Title..." />
+                      <div class="note-save-actions">
+                        <span class="note-save-status" id="noteSaveStatus">Saved</span>
+                        <button type="button" class="icon-button small-btn note-delete-btn" id="noteDeleteBtn"
+                          title="Delete this note">
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Condensed Toolbar: Course, Calendar Session, Location, and File options -->
+                    <div class="note-condensed-toolbar">
+                      <div class="note-condensed-pills-row">
+                        <!-- Course Button / Pill Select -->
+                        <div class="note-pill-select-wrapper" title="Course">
+                          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                          </svg>
+                          <select class="note-pill-select" id="noteCourseSelect">
+                            <option value="">Course: General</option>
+                          </select>
+                        </div>
+
+                        <!-- Calendar Session Button -->
+                        <button type="button" class="note-meta-pill-btn" id="noteSessionPickerBtn"
+                          title="Choose timetable session from calendar">
+                          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                          </svg>
+                          <span class="note-session-text" id="noteSessionSelectedText">Session</span>
+                          <svg class="note-pill-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none"
+                            stroke="currentColor" stroke-width="2.5">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                          </svg>
+                        </button>
+
+                        <!-- Storage Location Button -->
+                        <button type="button" class="note-meta-pill-btn" id="noteStorageLocationBadge"
+                          title="Change storage folder">
+                          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z">
+                            </path>
+                          </svg>
+                          <span id="noteStorageLocationText">Documents/CanvasNotes</span>
+                        </button>
+
+                        <!-- File options Button -->
+                        <button type="button" class="note-meta-pill-btn note-file-options-btn" id="noteLinkFileBtn"
+                          title="Link files from course modules">
+                          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path
+                              d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48">
+                            </path>
+                          </svg>
+                          <span>File options</span>
+                        </button>
+                      </div>
+
+                      <!-- Linked Module Files Chips -->
+                      <div class="note-linked-files-list" id="noteLinkedFilesList"></div>
+                    </div>
+                  </div>
+
+                  <!-- Rich Text Formatting Toolbar -->
+                  <div class="note-format-toolbar" id="noteFormatToolbar">
+                    <div class="format-group">
+                      <select class="format-select" id="formatBlockSelect" title="Text Style">
+                        <option value="p">Paragraph</option>
+                        <option value="h1">Heading 1</option>
+                        <option value="h2">Heading 2</option>
+                        <option value="h3">Heading 3</option>
+                        <option value="pre">Code Block</option>
+                      </select>
+                    </div>
+
+                    <div class="format-divider"></div>
+
+                    <div class="format-group">
+                      <button type="button" class="format-btn" id="formatBoldBtn" data-command="bold" title="Bold (⌘B)">
+                        <strong>B</strong>
+                      </button>
+                      <button type="button" class="format-btn" id="formatItalicBtn" data-command="italic"
+                        title="Italic (⌘I)">
+                        <em>I</em>
+                      </button>
+                      <button type="button" class="format-btn" id="formatUnderlineBtn" data-command="underline"
+                        title="Underline (⌘U)">
+                        <u>U</u>
+                      </button>
+                      <button type="button" class="format-btn" id="formatStrikeBtn" data-command="strikeThrough"
+                        title="Strikethrough">
+                        <s>S</s>
+                      </button>
+                      <button type="button" class="format-btn" id="formatHighlightBtn" title="Highlight text">
+                        <span class="format-marker-icon">H</span>
+                      </button>
+                    </div>
+
+                    <div class="format-divider"></div>
+
+                    <div class="format-group">
+                      <button type="button" class="format-btn" id="formatBulletListBtn"
+                        data-command="insertUnorderedList" title="Bulleted List">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                          stroke-width="2">
+                          <line x1="8" y1="6" x2="21" y2="6"></line>
+                          <line x1="8" y1="12" x2="21" y2="12"></line>
+                          <line x1="8" y1="18" x2="21" y2="18"></line>
+                          <circle cx="4" cy="6" r="1.5" fill="currentColor"></circle>
+                          <circle cx="4" cy="12" r="1.5" fill="currentColor"></circle>
+                          <circle cx="4" cy="18" r="1.5" fill="currentColor"></circle>
+                        </svg>
+                      </button>
+                      <button type="button" class="format-btn" id="formatNumberListBtn" data-command="insertOrderedList"
+                        title="Numbered List">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                          stroke-width="2">
+                          <line x1="10" y1="6" x2="21" y2="6"></line>
+                          <line x1="10" y1="12" x2="21" y2="12"></line>
+                          <line x1="10" y1="18" x2="21" y2="18"></line>
+                          <path d="M4 6h2v-2H4"></path>
+                          <path d="M4 10h2v2H4v2h2"></path>
+                        </svg>
+                      </button>
+                      <button type="button" class="format-btn" id="formatQuoteBtn" title="Blockquote">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                          stroke-width="2">
+                          <path
+                            d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z">
+                          </path>
+                          <path
+                            d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z">
+                          </path>
+                        </svg>
+                      </button>
+                      <button type="button" class="format-btn" id="formatHrBtn" data-command="insertHorizontalRule"
+                        title="Horizontal Divider">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                          stroke-width="2">
+                          <line x1="3" y1="12" x2="21" y2="12"></line>
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div class="format-divider"></div>
+
+                    <div class="format-group">
+                      <button type="button" class="format-btn" id="formatLinkBtn" title="Insert Link">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                          stroke-width="2">
+                          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                      </button>
+                      <button type="button" class="format-btn format-insert-media-btn" id="formatInsertMediaBtn"
+                        title="Insert Image, Video, or File (drag & drop or copy-paste also supported)">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                          stroke-width="2">
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                          <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <span>Media / File</span>
+                      </button>
+                      <input type="file" id="noteMediaFileInput" class="hidden"
+                        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.md" />
+                      <button type="button" class="format-btn" id="formatClearBtn" data-command="removeFormat"
+                        title="Clear Formatting">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                          stroke-width="2">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div class="format-right">
+                      <span class="note-word-count" id="noteWordCount">0 words</span>
+                    </div>
+                  </div>
+
+                  <!-- Rich Content Editor Area -->
+                  <div class="note-content-scroll-container">
+                    <div class="note-content-editor" id="noteContentEditor" contenteditable="true" spellcheck="true"
+                      placeholder="Start typing your note here... You can format text, copy-paste screenshots or images, drag & drop media, and link course documents.">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ======================================================================
+         5. Full-Page Module Reader Section (Opened in dedicated tabs)
+         ====================================================================== -->
+          <section class="module-reader-section hidden" id="moduleReaderSection">
+            <div class="module-reader-header" id="moduleReaderHeader">
+              <div class="reader-header-left">
+                <button class="secondary-button small-btn reader-back-btn" id="readerBackToCourseBtn"
+                  title="Back to Modules">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                  </svg>
+                  <span id="readerBackBtnLabel">Course Modules</span>
+                </button>
+                <div class="reader-divider"></div>
+                <span class="reader-item-icon" id="readerItemIcon">📄</span>
+                <div class="reader-title-info">
+                  <h2 class="reader-item-title" id="readerItemTitle">Document Reader</h2>
+                  <div class="reader-item-breadcrumbs" id="readerItemBreadcrumbs">
+                    <span id="readerCourseName">Course</span>
+                    <span class="reader-bread-sep">/</span>
+                    <span id="readerModuleName">Module</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="reader-header-actions">
+                <button class="secondary-button small-btn reader-action-btn" id="readerOpenAppBtn"
+                  title="Open with Default macOS Application">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
+                  <span>Open in App</span>
+                </button>
+                <button class="secondary-button small-btn reader-action-btn" id="readerRevealFinderBtn"
+                  title="Reveal in Finder">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                  <span>Reveal in Finder</span>
+                </button>
+                <button class="icon-button reader-action-btn" id="readerExternalBtn" title="Open in Canvas Web Browser">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <path
+                      d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                    </path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="module-reader-content" id="moduleReaderContent">
+              <!-- Rendered PDF, Markdown, Page body, or Code -->
+            </div>
+          </section>
+
+          <!-- ======================================================================
+             6. Dedicated Course Assistant Page
+             ====================================================================== -->
+          <section class="ai-page-section hidden" id="aiPageSection">
+            <div class="ai-page-container">
+              <!-- Dedicated Page Header matching other pages -->
+              <div class="dedicated-page-header ai-dedicated-header">
+                <div class="dedicated-page-title-row">
+                  <h1 class="dedicated-page-title">Assistant</h1>
+                </div>
+
+                <div class="dedicated-page-toolbar ai-header-toolbar">
+                  <!-- Course Selector Dropdown matching rest of app -->
+                  <div class="dedicated-select-wrapper ai-course-select-wrap" id="aiCourseSelectWrap"
+                    title="Select Course Scope">
+                    <select class="dedicated-select ai-course-selector" id="aiCourseSelector"
+                      aria-label="Select Target Course">
+                      <option value="all">All Enrolled Courses</option>
+                    </select>
+                    <svg class="dedicated-select-arrow" viewBox="0 0 24 24" width="12" height="12" fill="none"
+                      stroke="currentColor" stroke-width="2">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </div>
+
+                  <!-- Model Selector Button -->
+                  <button type="button" class="dedicated-select ai-model-selector-btn" id="aiModelSettingsToggleBtn"
+                    title="Choose AI Model" aria-label="Choose AI Model">
+                    <span class="ai-model-chip-name" id="aiActiveModelName">SmolLM2-360M</span>
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"
+                      class="ai-model-chevron">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+
+                  <!-- Clear / New Chat Button -->
+                  <button type="button" class="icon-button ai-clear-chat-btn" id="aiClearChatBtn" title="New Chat"
+                    aria-label="New Chat">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                    </svg>
+                  </button>
+                  <button type="button" class="ai-header-btn ai-close-btn hidden" id="aiCloseDrawerBtn"
+                    style="display:none;" aria-hidden="true">
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              <!-- Quick Model Settings / Switcher Panel -->
+              <div class="ai-model-settings-panel hidden" id="aiModelSettingsPanel">
+                <div class="ai-model-settings-inner">
+                  <div class="ai-settings-row">
+                    <div class="ai-settings-row-header">
+                      <label class="ai-settings-label">Active Model</label>
+                      <button type="button" class="ai-browse-models-link" id="aiBrowseModelsModalBtn">
+                        Browse Full Catalog ↗
+                      </button>
+                    </div>
+                    <select class="ai-model-dropdown" id="aiModelSelect" aria-label="Select Model">
+                      <!-- Dynamically populated -->
+                    </select>
+                  </div>
+                  <div class="ai-settings-buttons">
+                    <button type="button" class="secondary-button btn-sm" id="aiOpenCatalogBtn">
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path
+                          d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                        </path>
+                      </svg>
+                      <span>Browse Catalog & API Keys</span>
+                    </button>
+                    <button type="button" class="secondary-button btn-sm" id="aiSelectFileBtn">
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                      </svg>
+                      <span>Load Custom .gguf...</span>
+                    </button>
+                    <button type="button" class="secondary-button btn-sm" id="aiReindexKnowledgeBtn"
+                      title="Re-index all course documents and files for RAG">
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2">
+                        </path>
+                      </svg>
+                      <span>Re-index RAG Knowledge</span>
+                    </button>
+                  </div>
+                  <div class="ai-download-progress-wrap hidden" id="aiDownloadProgressWrap">
+                    <div class="ai-progress-text-row">
+                      <span id="aiDownloadStatusLabel">Downloading Model...</span>
+                      <span id="aiDownloadPercentLabel">0%</span>
+                    </div>
+                    <div class="ai-progress-bar-track">
+                      <div class="ai-progress-bar-fill" id="aiDownloadProgressBar" style="width: 0%"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Messages Body -->
+              <div class="ai-messages-container" id="aiMessagesContainer">
+                <!-- Suggestions View when empty -->
+                <div class="ai-welcome-card" id="aiWelcomeCard">
+                  <div class="ai-suggestions-grid">
+                    <button type="button" class="ai-suggestion-chip"
+                      data-prompt="Summarize upcoming assignments and due dates for this course.">
+                      📅 Upcoming assignments & due dates
+                    </button>
+                    <button type="button" class="ai-suggestion-chip"
+                      data-prompt="What are the key topics and concepts covered in the course modules?">
+                      📖 Key topics covered in the modules
+                    </button>
+                    <button type="button" class="ai-suggestion-chip"
+                      data-prompt="Give me a summary of the latest announcements for this course.">
+                      📢 Summary of latest announcements
+                    </button>
+                    <button type="button" class="ai-suggestion-chip"
+                      data-prompt="What are the grading criteria and course requirements according to the syllabus?">
+                      🎯 Grading criteria & course requirements
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Page Footer / Input Area -->
+              <div class="ai-page-footer" id="aiPageFooter">
+                <form class="ai-input-form" id="aiInputForm">
+                  <div class="ai-input-wrapper">
+                    <textarea class="ai-chat-input" id="aiChatInput"
+                      placeholder="Ask anything about your courses or assignments..." rows="1" autocomplete="off"
+                      spellcheck="false"></textarea>
+                    <div class="ai-input-actions">
+                      <button type="button" class="ai-stop-btn hidden" id="aiStopBtn" title="Stop generating">
+                        <span class="ai-stop-square"></span>
+                        <span>Stop</span>
+                      </button>
+                      <button type="submit" class="ai-send-btn" id="aiSendBtn" title="Send message (Return)"
+                        aria-label="Send message">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                          stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <line x1="22" y1="2" x2="11" y2="13"></line>
+                          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <!-- Right Side File Preview Panel -->
+        <aside class="file-preview-panel hidden" id="filePreviewPanel">
+          <div class="preview-resize-handle" id="previewResizeHandle" title="Drag to resize panel"></div>
+          <div class="preview-header">
+            <div class="preview-header-left">
+              <span class="preview-file-icon hidden" id="previewFileIcon" style="display: none;"
+                aria-hidden="true"></span>
+              <div class="preview-file-title-wrap">
+                <h3 class="preview-file-name" id="previewFileName">Document Preview</h3>
+                <span class="preview-file-meta-top hidden" id="previewFileMetaTop" style="display: none;"
+                  aria-hidden="true"></span>
+              </div>
+            </div>
+            <div class="preview-header-actions">
+              <button class="icon-button preview-action-btn" id="previewExternalBtn" title="Open Externally"
+                aria-label="Open externally">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+              </button>
+              <button class="icon-button preview-action-btn hidden" id="previewOpenAppBtn" style="display: none;"
+                aria-hidden="true"></button>
+              <button class="icon-button preview-action-btn" id="previewCloseBtn" title="Close Panel (Esc)"
+                aria-label="Close panel">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Preview Body -->
+          <div class="preview-body" id="previewBody">
+            <!-- Dynamically rendered based on file type -->
+          </div>
+        </aside>
+      </div><!-- /app-body-container -->
+    </div><!-- /app-main-wrap -->
+  </div><!-- /app-layout -->
+
+  <!-- Centralized Search Modal (Unified Modal with Faded Background) -->
+  <div class="search-page-overlay hidden" id="searchPageOverlay" aria-modal="true" role="dialog"
+    aria-label="Global Content Search">
+    <div class="search-page-backdrop" id="searchPageBackdrop"></div>
+    <div class="search-modal-card" id="searchPageContainer">
+      <!-- Searchbar INSIDE the Modal Card / Page -->
+      <div class="search-page-bar" id="searchPageBar">
+        <div class="search-page-input-wrap">
+          <svg class="search-page-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="globalSearchInput" class="search-page-input" placeholder="Search all content"
+            autocomplete="off" spellcheck="false" />
+          <button type="button" class="search-page-clear-btn hidden" id="globalSearchClearBtn" title="Clear search"
+            aria-label="Clear search">✕</button>
+        </div>
+
+        <!-- <button type="button" class="search-page-close-btn" id="searchPageCloseBtn" title="Close search (Esc)"
+          aria-label="Close search">
+          <kbd>Esc</kbd>
+        </button> -->
+      </div>
+
+      <!-- Horizontal row of courses below the searchbar -->
+      <div class="search-modal-course-row" id="searchPageCourseChips">
+        <!-- Dynamically populated course buttons (course titles only) -->
+      </div>
+
+      <!-- Filters & Results inside the Modal Card / Page -->
+      <div class="search-page-results-section" id="globalSearchResultsPanel">
+        <div class="search-page-results-list" id="globalSearchResultsList">
+          <!-- Dynamically populated search items -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Missing Credentials Warning Modal -->
+  <div class="modal-backdrop hidden" id="credentialsModal">
+    <div class="modal-card credentials-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="card-icon warning-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <div>
+            <h2 id="credentialsModalTitle">Connect Canvas Account</h2>
+            <p class="modal-card-subtitle" id="credentialsModalSubtitle">Connect your Canvas LMS instance, or continue
+              browsing offline</p>
+          </div>
+        </div>
+        <button class="close-modal-btn" id="closeCredentialsModalBtn" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="credentials-modal-desc" id="credentialsModalDesc">
+          Please provide both your <strong>Canvas Instance Host</strong> and <strong>Access Token</strong> to connect
+          your account and load your courses.
+        </p>
+
+        <div class="credentials-missing-badges" id="credentialsMissingBadges">
+          <!-- Dynamically populated missing badges -->
+        </div>
+
+        <!-- Direct Fast Input Form inside Modal -->
+        <div class="modal-credentials-form">
+          <div class="form-group">
+            <div class="form-label-row">
+              <label for="modalDomainInput">Instance Host</label>
+            </div>
+            <div class="input-wrapper input-wrapper-md">
+              <span class="input-prefix">https://</span>
+              <input type="text" id="modalDomainInput" placeholder="canvas.instructure.com" spellcheck="false"
+                autocomplete="off" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="form-label-row">
+              <label for="modalTokenInput">Access Token</label>
+              <span class="token-format-badge">Bearer Token</span>
+            </div>
+            <div class="input-wrapper input-wrapper-md password-input-wrap">
+              <input type="password" id="modalTokenInput" class="font-mono-input"
+                placeholder="Paste your Canvas Personal Access Token..." spellcheck="false" autocomplete="off" />
+              <button type="button" class="toggle-password-btn" id="toggleModalTokenVisibility"
+                title="Toggle visibility">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="credentials-modal-actions">
+          <button type="button" class="primary-button" id="credentialsModalEnterBtn">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+              <polyline points="10 17 15 12 10 7"></polyline>
+              <line x1="15" y1="12" x2="3" y2="12"></line>
+            </svg>
+            <span>Connect</span>
+          </button>
+          <button type="button" class="secondary-button btn-modal-offline" id="credentialsModalOfflineBtn">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 1l22 22"></path>
+              <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+              <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+              <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+              <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+              <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+            </svg>
+            <span>Continue Offline & View Content</span>
+          </button>
+          <button type="button" class="demo-button" id="credentialsModalDemoBtn">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            <span>Explore Demo Sandbox</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Course Customization (Color & Icon) Modal -->
+  <div class="modal-backdrop hidden" id="courseCustomizationModal">
+    <div class="modal-card course-customization-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="card-icon" id="customizationModalHeaderIconWrap"
+            style="background: rgba(99, 102, 241, 0.15); color: #6366f1;">
+            <span id="customizationModalHeaderIcon">📚</span>
+          </div>
+          <div>
+            <h2 id="customizationModalTitle">Customize Course</h2>
+          </div>
+        </div>
+        <button class="close-modal-btn" id="closeCourseCustomizationModalBtn" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Live Preview -->
+        <div class="course-customization-preview-card" id="customizationPreviewBanner">
+          <div class="customization-preview-icon" id="customizationPreviewIcon"></div>
+          <div class="customization-preview-info">
+            <span class="customization-preview-code" id="customizationPreviewCode">CS 101</span>
+            <span class="customization-preview-title" id="customizationPreviewName">Introduction to Computer
+              Science</span>
+          </div>
+        </div>
+
+        <!-- Color Selection -->
+        <div class="customization-section">
+          <label class="customization-section-label">Accent Color</label>
+          <div class="color-palette-grid" id="customizationColorPalette">
+            <!-- Rendered dynamically -->
+          </div>
+          <div class="custom-color-input-row">
+            <label for="customizationCustomColorInput">Custom HEX Color:</label>
+            <div class="custom-color-picker-wrap">
+              <input type="color" id="customizationCustomColorPicker" value="#6366f1" />
+              <input type="text" id="customizationCustomColorInput" placeholder="#6366f1" maxlength="7"
+                spellcheck="false" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Actions -->
+        <div class="customization-actions">
+          <button type="button" class="secondary-button" id="customizationResetBtn">Reset to Default</button>
+          <div class="customization-actions-right">
+            <button type="button" class="secondary-button" id="customizationCancelBtn">Cancel</button>
+            <button type="button" class="primary-button" id="customizationSaveBtn">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Course Archiving & Settings Modal -->
+  <div class="modal-backdrop hidden" id="courseArchiveModal">
+    <div class="modal-card course-archive-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div>
+            <h2>Course Settings</h2>
+          </div>
+        </div>
+        <button class="close-modal-btn" id="closeCourseArchiveModalBtn" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="course-archive-toolbar">
+          <div class="dedicated-pills-row" style="margin-bottom: 0;">
+            <button type="button" class="dedicated-pill-btn active" data-archive-filter="all">
+              <span>All</span>
+              <span class="pill-count" id="archiveFilterCountAll">0</span>
+            </button>
+            <button type="button" class="dedicated-pill-btn" data-archive-filter="active">
+              <span>Active</span>
+              <span class="pill-count" id="archiveFilterCountActive">0</span>
+            </button>
+            <button type="button" class="dedicated-pill-btn" data-archive-filter="archived">
+              <span>Archived</span>
+              <span class="pill-count" id="archiveFilterCountArchived">0</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="course-archive-list" id="courseArchiveList">
+          <!-- Dynamically populated via JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Docs Modal -->
+  <div class="modal-backdrop hidden" id="docsModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </div>
+          <h2>Canvas API Specification Reference</h2>
+        </div>
+        <button class="close-modal-btn" id="closeDocsModalBtn">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="doc-item">
+          <h4>Announcements API</h4>
+          <pre><code>GET /api/v1/announcements?context_codes[]=course_&lt;id&gt;</code></pre>
+          <p>Documented in <code>canvas_docs.pdf</code> (page 110): Fetches course broadcasts and announcements.</p>
+        </div>
+        <div class="doc-item">
+          <h4>Modules API</h4>
+          <pre><code>GET /api/v1/courses/&lt;id&gt;/modules?include[]=items&amp;include[]=content_details</code></pre>
+          <p>Returns structured learning units, prerequisites, and course content items.</p>
+        </div>
+        <div class="doc-item">
+          <h4>Assignments &amp; Grades API</h4>
+          <pre><code>GET /api/v1/courses/&lt;id&gt;/assignments?include[]=submission&amp;order_by=due_at</code></pre>
+          <p>Returns course deliverables, points, due dates, student submission states, and computed scores.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inbox Compose New Conversation Modal -->
+  <div class="modal-backdrop hidden" id="inboxComposeModal">
+    <div class="modal-card inbox-compose-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="modal-card-title">New Conversation</h3>
+            <p class="modal-card-subtitle">Send a message to an instructor, TA, or course peer.</p>
+          </div>
+        </div>
+        <button class="close-modal-btn" id="closeInboxComposeModalBtn" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <form id="inboxComposeForm" class="inbox-compose-form">
+          <div class="settings-form-group">
+            <label for="inboxComposeCourseSelect">Course / Context</label>
+            <select id="inboxComposeCourseSelect" class="settings-input" required>
+              <option value="">Select a Course...</option>
+            </select>
+          </div>
+
+          <div class="settings-form-group">
+            <label for="inboxComposeRecipientsInput">Recipient(s)</label>
+            <input type="text" id="inboxComposeRecipientsInput" class="settings-input"
+              placeholder="Instructor, TA, or student name..." required />
+          </div>
+
+          <div class="settings-form-group">
+            <label for="inboxComposeSubjectInput">Subject</label>
+            <input type="text" id="inboxComposeSubjectInput" class="settings-input"
+              placeholder="e.g. Question on Assignment 3" required />
+          </div>
+
+          <div class="settings-form-group">
+            <label for="inboxComposeBodyText">Message</label>
+            <textarea id="inboxComposeBodyText" class="settings-input inbox-compose-textarea"
+              placeholder="Write your message here..." rows="5" required></textarea>
+          </div>
+
+          <div class="modal-actions-row">
+            <button type="button" class="secondary-button" id="inboxComposeCancelBtn">Cancel</button>
+            <button type="submit" class="primary-button" id="inboxComposeSubmitBtn">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+              <span>Send Message</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assignment Submit Modal -->
+  <div class="modal-backdrop hidden" id="assignmentSubmitModal">
+    <div class="modal-card assignment-submit-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="card-icon" style="background: rgba(99, 102, 241, 0.15); color: var(--color-brand-primary);">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </div>
+          <div class="assignment-submit-header-text">
+            <div class="assignment-submit-title-row">
+              <h3 class="modal-card-title" id="assignmentSubmitModalTitle">Submit Assignment</h3>
+              <span class="assignment-submit-attempt-badge" id="assignmentSubmitAttemptBadge">Attempt 1</span>
+            </div>
+            <p class="modal-card-subtitle" id="assignmentSubmitModalSubtitle">Course Name • Assignment Title</p>
+          </div>
+        </div>
+        <button class="close-modal-btn" id="closeAssignmentSubmitModalBtn" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="modal-body" id="assignmentSubmitModalBody">
+        <!-- Assignment Meta Bar -->
+        <div class="assignment-submit-meta-bar" id="assignmentSubmitMetaBar">
+          <div class="assignment-submit-meta-item">
+            <span class="submit-meta-label">Due Date</span>
+            <span class="submit-meta-value" id="assignmentSubmitDueText">No Due Date</span>
+          </div>
+          <div class="assignment-submit-meta-item">
+            <span class="submit-meta-label">Points Possible</span>
+            <span class="submit-meta-value" id="assignmentSubmitPtsText">100 pts</span>
+          </div>
+          <div class="assignment-submit-meta-item">
+            <span class="submit-meta-label">Accepted Formats</span>
+            <span class="submit-meta-value" id="assignmentSubmitFormatsText">File Upload</span>
+          </div>
+        </div>
+
+        <!-- Submission Form Container -->
+        <form id="assignmentSubmitForm" class="assignment-submit-form">
+          <!-- Submission Type Selector Tabs -->
+          <div class="assignment-submit-tabs" id="assignmentSubmitTabs">
+            <button type="button" class="assignment-submit-tab-btn active" data-type="online_upload"
+              id="submitTabUploadBtn">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span>File Upload</span>
+            </button>
+            <button type="button" class="assignment-submit-tab-btn" data-type="online_text_entry" id="submitTabTextBtn">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              </svg>
+              <span>Text Entry</span>
+            </button>
+            <button type="button" class="assignment-submit-tab-btn" data-type="online_url" id="submitTabUrlBtn">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+              </svg>
+              <span>Website URL</span>
+            </button>
+          </div>
+
+          <!-- Tab Content: File Upload -->
+          <div class="assignment-submit-pane active" id="submitPaneUpload">
+            <div class="assignment-dropzone" id="assignmentModalDropzone">
+              <input type="file" id="assignmentModalFileInput" multiple class="hidden-file-input"
+                style="display:none;" />
+              <div class="dropzone-icon">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+                  <path d="M12 12v9"></path>
+                  <path d="m16 16-4-4-4 4"></path>
+                </svg>
+              </div>
+              <div class="dropzone-text">
+                <span class="dropzone-headline">Drag & drop submission files here</span>
+                <span class="dropzone-sub">or <button type="button" class="dropzone-browse-link"
+                    id="assignmentModalBrowseBtn">browse from computer</button></span>
+              </div>
+              <div class="dropzone-accepted-hint" id="assignmentModalAcceptedHint">
+                Supported: PDF, Word documents, Zip archives, source code, images
+              </div>
+            </div>
+
+            <!-- Selected Files List -->
+            <div class="assignment-selected-files-list hidden" id="assignmentModalFilesList"></div>
+          </div>
+
+          <!-- Tab Content: Text Entry -->
+          <div class="assignment-submit-pane hidden" id="submitPaneText">
+            <div class="settings-form-group assignment-field-group">
+              <div class="assignment-field-label-row">
+                <label for="assignmentModalTextarea" class="assignment-field-label">Your Submission Text</label>
+                <div class="assignment-text-stats" id="assignmentModalTextStats">0 words • 0 chars</div>
+              </div>
+              <textarea id="assignmentModalTextarea" class="settings-input assignment-text-editor"
+                placeholder="Write, compose, or paste your assignment text here..." rows="7"></textarea>
+            </div>
+          </div>
+
+          <!-- Tab Content: Website URL -->
+          <div class="assignment-submit-pane hidden" id="submitPaneUrl">
+            <div class="settings-form-group assignment-field-group">
+              <label for="assignmentModalUrlInput" class="assignment-field-label">Website URL</label>
+              <div class="assignment-url-input-wrap">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                </svg>
+                <input type="url" id="assignmentModalUrlInput" class="settings-input"
+                  autocorrect="off" autocapitalize="off" spellcheck="false"
+                  placeholder="https://github.com/username/project or https://docs.google.com/..." />
+              </div>
+            </div>
+          </div>
+
+          <!-- Student Comment Field -->
+          <div class="settings-form-group assignment-comment-group">
+            <label for="assignmentModalCommentInput" class="assignment-field-label secondary">
+              Comments for Instructor / Grader (Optional)
+            </label>
+            <textarea id="assignmentModalCommentInput" class="settings-input assignment-comment-textarea"
+              placeholder="Add any notes or context about your submission..." rows="3"></textarea>
+          </div>
+
+          <!-- Feedback / Error Notice -->
+          <div class="assignment-submit-alert hidden" id="assignmentModalAlert"></div>
+
+          <!-- Modal Action Buttons -->
+          <div class="modal-actions-row">
+            <button type="button" class="secondary-button" id="assignmentModalCancelBtn">Cancel</button>
+            <button type="submit" class="primary-button submit-action-btn" id="assignmentModalSubmitBtn">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+              <span id="assignmentModalSubmitBtnText">Submit Assignment</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Celebration / Success View -->
+        <div class="assignment-submit-success hidden" id="assignmentSubmitSuccessView">
+          <div class="submit-success-animation-wrap">
+            <div class="submit-success-circle">
+              <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+          </div>
+          <h3 class="submit-success-title">Assignment Submitted!</h3>
+          <p class="submit-success-desc" id="assignmentSubmitSuccessDesc">Your submission has been recorded
+            successfully.</p>
+          <div class="submit-success-details-card" id="assignmentSubmitSuccessDetails"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Link Course File Modal -->
+  <div class="modal-backdrop hidden" id="noteLinkFileModal">
+    <div class="modal-card note-link-file-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path
+                d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48">
+              </path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="modal-card-title">Link Course File to Note</h3>
+            <p class="modal-card-subtitle" id="noteLinkFileModalSubtitle">Select a lecture slide, document, or module
+              reading.</p>
+          </div>
+        </div>
+        <button class="close-modal-btn" id="closeNoteLinkFileModalBtn" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="note-link-search-wrap">
+          <input type="text" class="settings-input" id="noteLinkFileSearchInput" placeholder="Filter module files..." />
+        </div>
+        <div class="note-link-file-options-list" id="noteLinkFileOptionsList">
+          <!-- Populated with module items and files -->
+        </div>
+        <div class="modal-actions-row">
+          <button type="button" class="secondary-button" id="noteLinkFileCancelBtn">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Link Calendar Session Modal -->
+  <div class="modal-backdrop hidden" id="noteSessionCalendarModal">
+    <div class="modal-card note-session-calendar-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </div>
+          <div>
+            <h3 class="modal-card-title">Select Calendar Session</h3>
+            <p class="modal-card-subtitle">Choose a scheduled lecture, seminar, or event from your timetable.</p>
+          </div>
+        </div>
+        <button class="close-modal-btn" id="closeNoteSessionModalBtn" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="modal-body note-session-modal-body">
+        <!-- Interactive Month Calendar Header -->
+        <div class="note-cal-header-row">
+          <div class="note-cal-nav">
+            <button type="button" class="icon-button small-btn" id="noteCalPrevMonthBtn"
+              title="Previous Month">‹</button>
+            <span class="note-cal-month-title" id="noteCalMonthTitle">October 2026</span>
+            <button type="button" class="icon-button small-btn" id="noteCalNextMonthBtn" title="Next Month">›</button>
+            <button type="button" class="secondary-button extra-small-btn" id="noteCalTodayBtn">Today</button>
+          </div>
+          <div class="note-session-search-wrap">
+            <input type="text" class="settings-input" id="noteSessionSearchInput" placeholder="Search sessions..." />
+          </div>
+        </div>
+
+        <div class="note-cal-split-layout">
+          <!-- Left: Mini Calendar Grid -->
+          <div class="note-cal-grid-pane">
+            <div class="note-cal-weekdays">
+              <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+            </div>
+            <div class="note-cal-days-grid" id="noteCalDaysGrid">
+              <!-- Dynamically populated days -->
+            </div>
+          </div>
+
+          <!-- Right: Session Agenda for Selected Date or Course -->
+          <div class="note-cal-sessions-pane">
+            <div class="note-cal-sessions-header">
+              <span class="note-cal-sessions-date-label" id="noteCalSessionsDateLabel">Sessions</span>
+            </div>
+            <div class="note-cal-sessions-list" id="noteCalSessionsList">
+              <!-- Dynamically populated events -->
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions-row note-session-actions-row">
+          <button type="button" class="secondary-button" id="noteSessionClearBtn">Clear Session</button>
+          <button type="button" class="secondary-button" id="noteSessionCancelBtn">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab & Course Custom Context Menu -->
+  <div class="custom-context-menu hidden" id="customContextMenu"></div>
+
+
+
+  <!-- ======================================================================
+       AI Model Catalog & Multi-Model Selector Modal
+       ====================================================================== -->
+  <div class="ai-model-modal-overlay hidden" id="aiModelModalOverlay" aria-modal="true" role="dialog"
+    aria-label="Select AI Model">
+    <div class="ai-model-modal-card" id="aiModelModalCard">
+      <!-- Modal Header -->
+      <div class="ai-modal-header">
+        <div class="ai-modal-header-text">
+          <div class="ai-modal-title-row">
+            <h2 class="ai-modal-title">Select AI Model</h2>
+          </div>
+        </div>
+        <button type="button" class="ai-modal-close-btn" id="aiModelModalCloseBtn"
+          aria-label="Close Model Selection">✕</button>
+      </div>
+
+      <!-- Modal Tab Switcher -->
+      <div class="ai-modal-tabs">
+        <button type="button" class="ai-modal-tab-btn active" id="aiTabBtnLocal">
+          <span>Local Models</span>
+        </button>
+        <button type="button" class="ai-modal-tab-btn" id="aiTabBtnCloud">
+          <span>Cloud Models</span>
+        </button>
+      </div>
+
+      <!-- Tab Content: Local Models -->
+      <div class="ai-modal-tab-panel" id="aiTabPanelLocal">
+        <div class="ai-models-grid" id="aiLocalModelsGrid">
+          <!-- Dynamically populated with local model cards -->
+        </div>
+      </div>
+
+      <!-- Tab Content: Cloud Models -->
+      <div class="ai-modal-tab-panel hidden" id="aiTabPanelCloud">
+        <!-- Cloud Models List Grouped by Provider -->
+        <div class="ai-cloud-providers-list" id="aiCloudProvidersList">
+          <!-- Dynamically populated with provider sections, models, and interactive API key configuration menu -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clear Cache Confirmation Modal -->
+  <div class="modal-backdrop hidden" id="clearCacheConfirmModal">
+    <div class="modal-card clear-cache-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="card-icon warning-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+          <div>
+            <h3 class="modal-card-title">Clear All Cache</h3>
+            <p class="modal-card-subtitle">Local storage and offline cache cleanup</p>
+          </div>
+        </div>
+        <button class="close-modal-btn" id="closeClearCacheModalBtn" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="clear-cache-modal-desc"
+          style="margin-bottom: 20px; color: var(--color-text-secondary); font-size: 13.5px; line-height: 1.5;">
+          Are you sure you want to clear all local cache? This will remove all offline cached courses, downloaded pages,
+          and temporary data. Your login credentials and notes will not be affected.
+        </p>
+        <div class="modal-actions-row" style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="secondary-button small-btn" id="cancelClearCacheBtn">Cancel</button>
+          <button type="button" class="danger-button small-btn" id="confirmClearCacheBtn">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+            <span>Clear Cache</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connect Schedule Onboarding Modal -->
+  <div class="modal-backdrop hidden" id="calendarConnectScheduleModal">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div>
+            <h3 class="modal-card-title">Connect Your Schedule</h3>
+          </div>
+        </div>
+        <button class="close-modal-btn" id="closeCalendarScheduleModalBtn" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p style="margin-bottom: 16px; color: var(--color-text-secondary); font-size: 13.5px; line-height: 1.6;">
+          Connect your university timetable or iCal subscription feed to view all your upcoming lectures, classes, and
+          academic events right alongside your Canvas assignments in Atelier.
+        </p>
+
+        <div
+          style="background: var(--color-bg-subtle); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 12px;">
+          <div style="color: var(--color-brand-primary); margin-top: 2px; flex-shrink: 0;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+          </div>
+          <div style="font-size: 12.5px; color: var(--color-text-secondary); line-height: 1.5;">
+            You can paste your university timetable iCal / WebCal URL anytime in <strong
+              style="color: var(--color-text-primary);">Settings &rarr; Schedule Integration</strong> to keep your
+            calendar automatically synced.
+          </div>
+        </div>
+
+        <div class="modal-actions-row" style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="secondary-button small-btn" id="dismissCalendarScheduleModalBtn">Maybe
+            Later</button>
+          <button type="button" class="primary-button small-btn" id="goToSettingsScheduleBtn">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+              </path>
+            </svg>
+            <span>Open Settings</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script type="module">
+    try {
+      const pdfjsLib = await import('../node_modules/pdfjs-dist/legacy/build/pdf.mjs');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '../node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs';
+      window.pdfjsLib = pdfjsLib;
+    } catch (e) {
+      console.warn('PDF.js module preloading warning:', e);
+    }
+  </script>
+  <script src="assets/lucide.min.js"></script>
+
+  <!-- Modular Application Scripts -->
+  <script src="js/state-dom.js"></script>
+  <script src="js/mock-data.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/custom-dropdown.js"></script>
+  <script src="js/offline.js"></script>
+  <script src="js/auth-events.js"></script>
+  <script src="js/tabs-nav.js"></script>
+  <script src="js/courses.js"></script>
+  <script src="js/search.js"></script>
+  <script src="js/sidebar-filters.js"></script>
+  <script src="js/widgets.js"></script>
+  <script src="js/course-modules.js"></script>
+  <script src="js/course-assignments.js"></script>
+  <script src="js/file-preview.js"></script>
+  <script src="js/grades-profile.js"></script>
+  <script src="js/ai-tools.js"></script>
+  <script src="js/ai-assistant.js"></script>
+  <script src="js/inbox.js"></script>
+  <script src="js/notes.js"></script>
+  <script src="js/assignments-announcements-pages.js"></script>
+  <script src="js/init.js"></script>
+</body>
+
+</html>

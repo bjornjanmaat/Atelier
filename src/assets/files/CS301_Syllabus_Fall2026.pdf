@@ -1,0 +1,128 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+6 0 obj
+<< /Length 1620 >>
+stream
+BT
+/F1 20 Tf
+50 730 Td
+(CS 301: Distributed Systems & Cloud Infrastructure) Tj
+ET
+BT
+/F2 11 Tf
+50 710 Td
+(Course Syllabus - Fall 2026 | Instructor: Dr. Marcus Vance) Tj
+ET
+0.2 0.35 0.8 rg
+50 695 512 2 re f
+0 0 0 rg
+BT
+/F1 13 Tf
+50 665 Td
+(1. Course Description) Tj
+ET
+BT
+/F2 10 Tf
+50 645 Td
+(This course provides an in-depth study of distributed systems, fault tolerance, consensus,) Tj
+ET
+BT
+/F2 10 Tf
+50 630 Td
+(scalability, and cloud infrastructure architectures. Topics include RPCs, logical clocks,) Tj
+ET
+BT
+/F2 10 Tf
+50 615 Td
+(state machine replication, Paxos and Raft algorithms, and distributed storage engines.) Tj
+ET
+BT
+/F1 13 Tf
+50 588 Td
+(2. Course Logistics & Communication) Tj
+ET
+BT
+/F2 10 Tf
+50 568 Td
+(Lectures: Tuesdays & Thursdays 10:00 AM - 11:30 AM \(Room EE-104\)) Tj
+ET
+BT
+/F2 10 Tf
+50 553 Td
+(Office Hours: Wednesdays 2:00 PM - 4:00 PM \(Zoom & Gates Hall 412\)) Tj
+ET
+BT
+/F2 10 Tf
+50 538 Td
+(Primary Canvas LMS page contains announcements, grades, and discussion forums.) Tj
+ET
+BT
+/F1 13 Tf
+50 511 Td
+(3. Grading Breakdown) Tj
+ET
+BT
+/F2 10 Tf
+50 491 Td
+(Programming Projects \(Labs 1-4\): 45%) Tj
+ET
+BT
+/F2 10 Tf
+50 476 Td
+(Midterm Examination: 20%) Tj
+ET
+BT
+/F2 10 Tf
+50 461 Td
+(Final Project \(Distributed Key-Value Engine\): 25%) Tj
+ET
+BT
+/F2 10 Tf
+50 446 Td
+(Class Participation & Reading Discussions: 10%) Tj
+ET
+BT
+/F1 13 Tf
+50 419 Td
+(4. Late Policy & Academic Honesty) Tj
+ET
+BT
+/F2 10 Tf
+50 399 Td
+(Each student has 3 late days total across all labs without penalty.) Tj
+ET
+BT
+/F2 10 Tf
+50 384 Td
+(All submitted code must be original individual work adhering to university ethics.) Tj
+ET
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000000326 00000 n 
+0000000396 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+2068
+%%EOF
