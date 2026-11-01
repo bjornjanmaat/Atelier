@@ -7,9 +7,9 @@ A fast, local-first academic desktop application for Canvas LMS.
 Canvas is essential for modern coursework, but the standard web experience is often bogged down by multi-level menus, slow page loads, and fragmented browser tabs.
 Atelier moves your academic workflow out of the browser and into an intentional, high-performance desktop application. Built with Electron and designed with a local-first architecture, Atelier continuously synchronizes with the Canvas REST API to cache your entire course load directly on your computer, delivering instantaneous search, offline study capabilities, and a clutter-free study environment.
 
-[![Download macOS (Apple Silicon)](https://img.shields.io/badge/Download-macOS_(Apple_Silicon)-6d3cd0?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/your-username/atelier/releases/latest/download/atelier-arm64.dmg)
-[![Download macOS (Intel)](https://img.shields.io/badge/Download-macOS_(Intel)-6d3cd0?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/your-username/atelier/releases/latest/download/atelier.dmg)
-[![Download Windows](https://img.shields.io/badge/Download-Windows_(.exe)-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/your-username/atelier/releases/latest/download/atelier.exe)
+[![Download macOS (Apple Silicon)](https://img.shields.io/badge/Download-macOS_(Apple_Silicon)-6d3cd0?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/bjornjanmaat/Atelier/releases/download/release/Atelier-1.0.0-arm64.dmg)
+[![Download macOS (Intel)](https://img.shields.io/badge/Download-macOS_(Intel)-f13c15?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/bjornjanmaat/Atelier/releases/download/release/Atelier-1.0.0.dmg)
+[![Download Windows](https://img.shields.io/badge/Download-Windows_(.exe)-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/bjornjanmaat/Atelier/releases/download/release/Atelier.Setup.1.0.0.exe)
 
 ## Key Features
 
