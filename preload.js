@@ -30,7 +30,6 @@ contextBridge.exposeInMainWorld('canvasDesktop', {
   openLocalFile: (filePath) => ipcRenderer.invoke('app:open-local-file', filePath),
   showInFolder: (filePath) => ipcRenderer.invoke('app:show-in-folder', filePath),
   openExternal: (url) => ipcRenderer.invoke('app:open-external', url),
-  fetchUrl: (url) => ipcRenderer.invoke('canvas:fetch-url', url),
   onNewTab: (callback) => ipcRenderer.on('app:new-tab', (_event, ...args) => callback(...args)),
   onCloseTab: (callback) => ipcRenderer.on('app:close-tab', (_event, ...args) => callback(...args)),
   logTerminal: (params) => ipcRenderer.invoke('app:log-terminal', params),
@@ -121,6 +120,40 @@ contextBridge.exposeInMainWorld('canvasDesktop', {
     abortRequest: (requestUUID) => ipcRenderer.invoke('ELECTRON_LLM_ABORT_REQUEST', { requestUUID })
   }
 });
+
+// Also expose electronAi at top-level window.electronAi for compatibility
+try {
+  contextBridge.exposeInMainWorld('electronAi', {
+    create: (options) => ipcRenderer.invoke('ELECTRON_LLM_CREATE', options),
+    destroy: () => ipcRenderer.invoke('ELECTRON_LLM_DESTROY'),
+    prompt: (input, options) => ipcRenderer.invoke('ELECTRON_LLM_PROMPT', input, options),
+    promptStreaming: (input, options) => {
+      return new Promise((resolve) => {
+        ipcRenderer.once('ELECTRON_LLM_PROMPT_STREAMING_PORT', (event) => {
+          const [port] = event.ports;
+          port.start();
+          const iterator = {
+            async next() {
+              return new Promise((res, rej) => {
+                port.onmessage = (e) => {
+                  if (e.data.type === 'error') rej(new Error(e.data.error));
+                  else if (e.data.type === 'done') res({ done: true, value: undefined });
+                  else res({ value: e.data.chunk, done: false });
+                };
+              });
+            },
+            async return() { port.close(); return { done: true, value: undefined }; },
+            async throw(err) { port.close(); throw err; },
+            [Symbol.asyncIterator]() { return this; }
+          };
+          resolve(iterator);
+        });
+        ipcRenderer.send('ELECTRON_LLM_PROMPT_STREAMING_REQUEST', input, options);
+      });
+    },
+    abortRequest: (requestUUID) => ipcRenderer.invoke('ELECTRON_LLM_ABORT_REQUEST', { requestUUID })
+  });
+} catch (_) {}
 
 try {
   window.addEventListener('DOMContentLoaded', () => {

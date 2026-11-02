@@ -704,7 +704,7 @@ function handleAnnouncementPreview(ann, itemEl = null) {
           <span style="font-size: 12px; color: var(--color-text-muted);">${escapeHtml(postDate)}</span>
         </div>
         <div class="announcement-sidepanel-body preview-page-content" style="font-size: 13.5px; line-height: 1.6; color: var(--color-text-primary); user-select: text;">
-          ${sanitizeHtml(ann.message || '<p style="color: var(--color-text-muted);">No announcement content.</p>')}
+          ${ann.message || '<p style="color: var(--color-text-muted);">No announcement content.</p>'}
         </div>
       </div>
     `;

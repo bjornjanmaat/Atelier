@@ -865,7 +865,7 @@ function populateAssignmentDetailContainer(container, assignment, options = {}) 
     'Assignment';
 
   const descHtml = assignment.description && assignment.description.trim()
-    ? sanitizeHtml(assignment.description)
+    ? assignment.description
     : `<p class="preview-assignment-empty-desc">No instructions provided for this assignment.</p>`;
 
   const directUrl = assignment.html_url || (assignment.url && assignment.url.startsWith('http') ? assignment.url : null);

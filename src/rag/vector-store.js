@@ -462,7 +462,9 @@ class HybridVectorStore {
     const sparseResults = this.searchSparseFts(query, filter, 40);
 
     // 2. Dense Vector Semantic Search
-    const queryVector = await this.generateEmbedding(query, { useCloud: modelType === 'cloud' });
+    // Must match how the index was built (indexChunks uses local vectors): vectors from a
+    // different embedding model have the same length, but comparing them is meaningless.
+    const queryVector = await this.generateEmbedding(query);
     const denseResults = this.searchDenseVector(queryVector, filter, 40);
 
     // 3. Reciprocal Rank Fusion (RRF)

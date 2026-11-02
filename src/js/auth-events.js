@@ -550,7 +550,8 @@ function setupEventListeners() {
       if (!isResizing) return;
       const deltaX = startX - e.clientX;
       const minW = 360;
-      const maxW = Math.floor(window.innerWidth * 0.85);
+      // Keep in sync with max-width on .file-preview-panel in styles.css
+      const maxW = Math.floor(filePreviewPanel.parentElement.clientWidth * 0.6);
       const newWidth = Math.max(minW, Math.min(startWidth + deltaX, maxW));
       filePreviewPanel.style.width = `${newWidth}px`;
     });

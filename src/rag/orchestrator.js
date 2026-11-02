@@ -11,6 +11,15 @@ const { ingestLocalFile, ingestCanvasCourseDetails, cleanHtmlText } = require('.
 const { chunkDocumentsBatch } = require('./chunker');
 const { HybridVectorStore } = require('./vector-store');
 
+const RETRIEVAL_STOPWORDS = new Set([
+  'the', 'and', 'for', 'are', 'was', 'were', 'with', 'that', 'this', 'these', 'those', 'what', 'when', 'where', 'which',
+  'who', 'why', 'how', 'does', 'did', 'can', 'could', 'should', 'would', 'will', 'have', 'has', 'had', 'not', 'but',
+  'from', 'about', 'into', 'than', 'then', 'them', 'they', 'their', 'there', 'you', 'your', 'our', 'give', 'tell', 'show',
+  'explain', 'describe', 'summarize', 'summary', 'mean', 'means', 'please', 'example', 'examples', 'practical', 'more',
+  'again', 'one', 'two', 'some', 'any', 'course', 'courses', 'class', 'help', 'need', 'want', 'know', 'get', 'use', 'used',
+  'write', 'long', 'short', 'detailed', 'essay', 'sentence', 'sentences', 'paragraph', 'brief', 'briefly'
+]);
+
 class RAGOrchestrator {
   /**
    * @param {Object} options 
@@ -74,7 +83,8 @@ class RAGOrchestrator {
       }
 
       // Fallback demo courses if empty cache
-      if (!cachedCourses || cachedCourses.length === 0) {
+      const usingDemoCourses = !cachedCourses || cachedCourses.length === 0;
+      if (usingDemoCourses) {
         cachedCourses = [
           {
             id: '48201',
@@ -134,9 +144,9 @@ class RAGOrchestrator {
           if (dir && fs.existsSync(dir)) candidateDirs.push(dir);
         }
 
-        // Demo assets directory
+        // Demo assets directory: sample files, never part of a real account's courses
         const assetsDir = path.join(__dirname, '..', 'assets', 'files');
-        if (fs.existsSync(assetsDir) && !candidateDirs.includes(assetsDir)) {
+        if (usingDemoCourses && fs.existsSync(assetsDir) && !candidateDirs.includes(assetsDir)) {
           candidateDirs.push(assetsDir);
         }
 
@@ -259,7 +269,20 @@ class RAGOrchestrator {
       modelType
     });
 
-    const deduplicated = this.deduplicateChunks(rawResults).slice(0, effectiveTopK);
+    // Hybrid search always returns its best matches, even when nothing is on topic. Unrelated
+    // excerpts make models answer from them, so require a shared term with the question.
+    const queryTerms = (String(query).toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) || [])
+      .filter(term => !RETRIEVAL_STOPWORDS.has(term))
+      .map(term => term.replace(/s$/, ''));
+    const onTopicResults = scope === 'active_document' || queryTerms.length === 0
+      ? rawResults
+      : rawResults.filter(({ chunk }) => {
+        const haystack = `${chunk.documentTitle} ${chunk.section} ${chunk.text}`.toLowerCase();
+        const matchedTerms = queryTerms.filter(term => haystack.includes(term)).length;
+        return matchedTerms >= Math.ceil(queryTerms.length / 3);
+      });
+
+    const deduplicated = this.deduplicateChunks(onTopicResults).slice(0, effectiveTopK);
 
     // Build Formatted RAG Prompt Context Block
     let contextHeader = `=== RETRIEVED COURSE KNOWLEDGE (ATELIER LOCAL RAG) ===\n`;

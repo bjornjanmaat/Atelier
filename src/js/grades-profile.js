@@ -1,13 +1,26 @@
 /**
+ * Percentage shown in the grades table for an assignment, or null if it has none
+ */
+function getAssignmentGradePct(a) {
+  const sub = a.submission;
+  if (sub?.workflow_state !== 'graded' || !(a.points_possible > 0) || sub.score === null) return null;
+  return Math.round((sub.score / a.points_possible) * 100);
+}
+
+/**
  * Render Grades Tab
  */
 function renderGradesTab(course, assignments) {
   const enrollment = course.enrollments?.[0];
-  const score = enrollment?.computed_current_score ?? 96.4;
-  const letter = enrollment?.computed_current_grade ?? 'A';
+  const letter = enrollment?.computed_current_grade;
+  const pcts = assignments.map(getAssignmentGradePct).filter(pct => pct !== null);
+  const score = pcts.length > 0
+    ? Math.round((pcts.reduce((sum, pct) => sum + pct, 0) / pcts.length) * 10) / 10
+    : null;
 
-  gradeBigPct.textContent = `${score}%`;
-  gradeBigLetter.textContent = letter;
+  gradeBigPct.textContent = score !== null ? `${score}%` : '--';
+  gradeBigLetter.textContent = letter || '';
+  gradeBigLetter.classList.toggle('hidden', !letter);
 
   // Compute points summary
   let totalPossible = 0;
@@ -48,9 +61,8 @@ function renderGradesTab(course, assignments) {
       statusText = 'Graded';
       statusPillClass = 'success';
       scoreText = `${sub.score}`;
-      if (a.points_possible > 0 && sub.score !== null) {
-        pctText = `${Math.round((sub.score / a.points_possible) * 100)}%`;
-      }
+      const pct = getAssignmentGradePct(a);
+      if (pct !== null) pctText = `${pct}%`;
     } else if (sub?.workflow_state === 'submitted') {
       statusText = 'Submitted';
       statusPillClass = 'warning';

@@ -28,7 +28,7 @@ function getAvailableCourses() {
   if (Array.isArray(appState.courses) && appState.courses.length > 0) {
     return appState.courses;
   }
-  if (window.DEMO_DATA && Array.isArray(window.DEMO_DATA.courses)) {
+  if (appState.isDemo && window.DEMO_DATA && Array.isArray(window.DEMO_DATA.courses)) {
     return window.DEMO_DATA.courses;
   }
   return [];
@@ -858,7 +858,7 @@ function openNote(noteId) {
   updateSessionPickerDisplay(found.sessionTitle);
 
   if (noteContentEditor) {
-    noteContentEditor.innerHTML = (typeof sanitizeHtml === 'function' ? sanitizeHtml(found.contentHtml || '') : found.contentHtml) || '<p><br></p>';
+    noteContentEditor.innerHTML = found.contentHtml || '<p><br></p>';
   }
 
   renderLinkedFilesList();
@@ -1676,7 +1676,9 @@ function selectSessionFromModal(sessionId) {
  */
 function extractPlainTextSnippet(html) {
   if (!html) return '';
-  return (typeof stripHtmlToText === 'function' ? stripHtmlToText(html) : html.replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').substring(0, 110);
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return (tmp.textContent || tmp.innerText || '').trim().replace(/\s+/g, ' ').substring(0, 110);
 }
 
 /**

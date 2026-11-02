@@ -8,15 +8,13 @@
 
   function cleanHtml(rawHtml) {
     if (!rawHtml || typeof rawHtml !== 'string') return '';
-    try {
-      const doc = new DOMParser().parseFromString(rawHtml, 'text/html');
-      doc.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
-      doc.querySelectorAll('p').forEach(p => p.replaceWith(p.textContent + '\n\n'));
-      doc.querySelectorAll('li').forEach(li => li.replaceWith('• ' + li.textContent + '\n'));
-      return (doc.body.textContent || '').trim();
-    } catch {
-      return rawHtml.replace(/<[^>]*>/g, '').trim();
-    }
+    const tmp = document.createElement('div');
+    tmp.innerHTML = rawHtml;
+    // Replace breaks and paragraphs with newlines
+    tmp.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+    tmp.querySelectorAll('p').forEach(p => p.replaceWith(p.textContent + '\n\n'));
+    tmp.querySelectorAll('li').forEach(li => li.replaceWith('• ' + li.textContent + '\n'));
+    return (tmp.textContent || tmp.innerText || '').trim();
   }
 
   function resolveCourse(courseIdOrName) {
@@ -87,9 +85,10 @@
   }
 
   function getAllKnownCourses() {
-    return (window.appState && window.appState.courses && window.appState.courses.length > 0)
-      ? window.appState.courses
-      : ((window.DEMO_DATA && window.DEMO_DATA.courses) || []);
+    if (window.appState && window.appState.courses && window.appState.courses.length > 0) {
+      return window.appState.courses;
+    }
+    return (window.appState?.isDemo && window.DEMO_DATA && window.DEMO_DATA.courses) || [];
   }
 
   // --------------------------------------------------------------------------
@@ -119,7 +118,7 @@
             term: c.term?.name || 'Current Term',
             teachers: teachers || 'Faculty',
             current_score: enrollment.computed_current_score != null ? `${enrollment.computed_current_score}%` : 'In Progress',
-            current_grade: enrollment.computed_current_grade || 'A'
+            current_grade: enrollment.computed_current_grade || 'Not available'
           };
         });
         return {
@@ -608,19 +607,20 @@
           const assignments = details.assignments || [];
 
           // Summarize individual assignments scores
-          const gradedItems = assignments.map(a => ({
-            name: a.name,
-            points_possible: a.points_possible,
-            due_at: a.due_at,
-            submitted: Boolean(a.has_submitted_submissions)
-          }));
+          const gradedItems = assignments
+            .filter(a => a.submission?.score !== null && a.submission?.score !== undefined)
+            .map(a => ({
+              name: a.name,
+              score: a.submission.score,
+              points_possible: a.points_possible
+            }));
 
           gradesReport.push({
             course_id: c.id,
             course_name: c.name,
             course_code: c.course_code,
-            computed_current_score: enrollment.computed_current_score != null ? `${enrollment.computed_current_score}%` : '96.4%',
-            computed_current_grade: enrollment.computed_current_grade || 'A',
+            computed_current_score: enrollment.computed_current_score != null ? `${enrollment.computed_current_score}%` : 'Not available',
+            computed_current_grade: enrollment.computed_current_grade || 'Not available',
             assignments_count: assignments.length,
             graded_items: gradedItems.slice(0, 10)
           });
@@ -679,14 +679,16 @@
       parameters: {
         type: 'object',
         properties: {
-          days_ahead: { type: 'number', description: 'Number of days to look ahead (default: 14 days)' }
+          days_ahead: { type: 'number', description: 'Number of days to look ahead (default: 14 days)' },
+          course_id: { type: 'string', description: 'Course ID or name (optional; if omitted, checks all courses)' }
         }
       },
       execute: async (args) => {
         const days = args?.days_ahead || 14;
         const now = new Date();
         const cutoff = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-        const courses = getAllKnownCourses();
+        const targetCourse = resolveCourse(args?.course_id);
+        const courses = targetCourse ? [targetCourse] : getAllKnownCourses();
         const upcoming = [];
 
         for (const c of courses) {
@@ -708,7 +710,7 @@
                 due_at: a.due_at,
                 days_remaining: diffDays,
                 points: a.points_possible,
-                has_submitted: Boolean(a.has_submitted_submissions)
+                has_submitted: Boolean(a.submission?.submitted_at || ['submitted', 'graded'].includes(a.submission?.workflow_state))
               });
             }
           }
@@ -919,74 +921,87 @@
     }
   }
 
-  function getAiToolsPromptDefinition() {
-    let prompt = `### AVAILABLE CANVAS DATA RETRIEVAL TOOLS\n`;
-    prompt += `You have access to 16 real-time tools to inspect and retrieve any course content, assignments, announcements, grades, files, and schedules in Atelier:\n\n`;
+  // Finds the next {"tool": ...} object. end is -1 while the object is still streaming in.
+  function findToolCallSpan(text, from = 0) {
+    const pattern = /\{\s*"(tool|name)"\s*:\s*"([a-zA-Z0-9_-]*)/g;
+    pattern.lastIndex = from;
+    let match;
+    while ((match = pattern.exec(text))) {
+      // {"name": "..."} is only a tool call for a known tool; it could also be ordinary example JSON
+      if (match[1] === 'name' && !CANVAS_AI_TOOLS[match[2]]) continue;
 
-    Object.values(CANVAS_AI_TOOLS).forEach((tool, idx) => {
-      prompt += `${idx + 1}. **${tool.name}**\n`;
-      prompt += `   Description: ${tool.description}\n`;
-      const props = tool.parameters?.properties || {};
-      const propKeys = Object.keys(props);
-      if (propKeys.length > 0) {
-        prompt += `   Parameters:\n`;
-        propKeys.forEach(p => {
-          const pInfo = props[p];
-          const isReq = (tool.parameters?.required || []).includes(p);
-          prompt += `     - \`${p}\` (${pInfo.type}${isReq ? ', required' : ', optional'}): ${pInfo.description || ''}\n`;
-        });
-      } else {
-        prompt += `   Parameters: None (empty object {})\n`;
+      let depth = 0;
+      let inString = false;
+      for (let i = match.index; i < text.length; i++) {
+        const ch = text[i];
+        if (inString) {
+          if (ch === '\\') i++;
+          else if (ch === '"') inString = false;
+        } else if (ch === '"') {
+          inString = true;
+        } else if (ch === '{') {
+          depth++;
+        } else if (ch === '}' && --depth === 0) {
+          return { start: match.index, end: i + 1 };
+        }
       }
-      prompt += `\n`;
-    });
-
-    prompt += `### TOOL INVOCATION PROTOCOL\n`;
-    prompt += `When you need specific course data, dates, assignment details, grades, or files to answer the user's question, invoke a tool by outputting a tool call block:\n`;
-    prompt += `\`\`\`tool_call\n{"tool": "tool_name", "parameters": { ... }}\n\`\`\`\n\n`;
-    prompt += `The system will immediately execute the tool and provide the real-time data to complete your answer.\n`;
-
-    return prompt;
+      return { start: match.index, end: -1 };
+    }
+    return null;
   }
 
   function parseAiToolCall(text) {
     if (!text || typeof text !== 'string') return null;
 
-    // Pattern 1: ```tool_call\n{...}\n```
-    const fencedMatch = text.match(/```(?:tool_call|json:tool_call|tool)\s*\n([\s\S]*?)\n```/i);
-    if (fencedMatch) {
-      try {
-        const parsed = JSON.parse(fencedMatch[1].trim());
-        if (parsed.tool || parsed.name) {
-          return {
-            tool: parsed.tool || parsed.name,
-            parameters: parsed.parameters || parsed.args || {}
-          };
-        }
-      } catch { }
+    const span = findToolCallSpan(text);
+    if (!span || span.end === -1) return null;
+
+    try {
+      const parsed = JSON.parse(text.slice(span.start, span.end));
+      const tool = parsed.tool || parsed.name;
+      if (!CANVAS_AI_TOOLS[tool]) return null;
+      return { tool, parameters: parsed.parameters || parsed.args || {} };
+    } catch {
+      return null;
+    }
+  }
+
+  function stripAiToolCalls(text) {
+    if (!text || typeof text !== 'string') return '';
+
+    let visible = '';
+    let cursor = 0;
+    let span;
+    while ((span = findToolCallSpan(text, cursor))) {
+      visible += text.slice(cursor, span.start);
+      if (span.end === -1) {
+        cursor = text.length;
+        break;
+      }
+      cursor = span.end;
+    }
+    visible += text.slice(cursor);
+
+    visible = visible
+      .replace(/<\/?tool_call>/gi, '')
+      .replace(/```[\w:-]*\s*```/g, '')
+      .replace(/```(?:tool|json:tool)[\w:-]*\s*$/i, '');
+
+    // A fence left open by the removed call, not the closing fence of a real code block
+    const fenceCount = (visible.match(/```/g) || []).length;
+    if (fenceCount % 2 === 1) {
+      visible = visible.replace(/```(?:json)?\s*$/i, '');
     }
 
-    // Pattern 2: Raw JSON {"tool": "...", "parameters": {...}}
-    const rawMatch = text.match(/\{[\s\n]*"tool"\s*:\s*"([a-zA-Z0-9_-]+)"[\s\S]*?\}/);
-    if (rawMatch) {
-      try {
-        const parsed = JSON.parse(rawMatch[0]);
-        return {
-          tool: parsed.tool,
-          parameters: parsed.parameters || {}
-        };
-      } catch { }
-    }
-
-    return null;
+    return visible.trim();
   }
 
   // Expose globally
   window.canvasAiTools = {
     tools: CANVAS_AI_TOOLS,
     executeTool: executeAiTool,
-    getPromptDefinition: getAiToolsPromptDefinition,
-    parseToolCall: parseAiToolCall
+    parseToolCall: parseAiToolCall,
+    stripToolCalls: stripAiToolCalls
   };
 
 })(window);

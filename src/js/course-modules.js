@@ -15,11 +15,19 @@ function renderCourseViewWithDetails(course, details) {
   if (courseHeaderTeacher) courseHeaderTeacher.textContent = `Instructor: ${teacher}`;
 
   const enrollment = course.enrollments?.[0];
-  if (enrollment?.computed_current_grade) {
-    const scoreStr = `${enrollment.computed_current_score || ''}% (${enrollment.computed_current_grade})`;
+  const courseScore = enrollment?.computed_current_score;
+  const courseLetter = enrollment?.computed_current_grade;
+  if (courseScore != null) {
+    const scoreStr = courseLetter ? `${courseScore}% (${courseLetter})` : `${courseScore}%`;
     if (courseHeaderGrade) courseHeaderGrade.textContent = `Grade: ${scoreStr}`;
     if (badgeGradesSummary) {
-      badgeGradesSummary.textContent = `${enrollment.computed_current_score || 95}%`;
+      badgeGradesSummary.textContent = `${courseScore}%`;
+      badgeGradesSummary.classList.remove('hidden');
+    }
+  } else if (courseLetter) {
+    if (courseHeaderGrade) courseHeaderGrade.textContent = `Grade: ${courseLetter}`;
+    if (badgeGradesSummary) {
+      badgeGradesSummary.textContent = courseLetter;
       badgeGradesSummary.classList.remove('hidden');
     }
   } else {
@@ -167,11 +175,7 @@ async function loadCoursePageForTab(tab, forceReload = false) {
     }
 
     if (!details) {
-      if (String(course.id).startsWith('4820')) {
-        details = DEMO_COURSE_DETAILS;
-      } else {
-        details = { announcements: [], modules: [], assignments: [], files: [] };
-      }
+      details = { announcements: [], modules: [], assignments: [], files: [] };
     }
 
     // 3. If online, trigger background file and page synchronization for this course
@@ -639,7 +643,7 @@ async function renderFullPageCoursePage(item, moduleObj, tab) {
       <div style="background:var(--color-bg-card); padding:24px; border-radius:var(--radius-md); border:1px solid var(--color-border-subtle); margin:20px 0;">
         <h3 style="margin:0 0 10px 0; color:var(--color-text-primary); font-size:17px;">${escapeHtml(pageTitle)}</h3>
         <p style="margin:0 0 16px 0; font-size:14px; color:var(--color-text-secondary); line-height: 1.6;">
-          ${item.body ? sanitizeHtml(item.body) : 'Module learning page registered in course curriculum.'}
+          ${item.body ? item.body : 'Module learning page registered in course curriculum.'}
         </p>
         ${pageDirectUrl ? `
           <button class="primary-button" id="readerPageDirectOpenBtn" style="font-size:13px; padding:7px 18px; cursor:pointer;">
@@ -685,7 +689,7 @@ function displayFullPageBodyContent(title, htmlBody, moduleObj) {
         </h1>
       </div>
       <div class="reader-page-body">
-        ${sanitizeHtml(htmlBody)}
+        ${htmlBody}
       </div>
     </div>
   `;
@@ -1063,7 +1067,7 @@ async function handleModulePagePreview(item, moduleObj) {
       <div style="background:var(--color-bg-subtle); padding:18px; border-radius:var(--radius-md); border:1px solid var(--color-border-subtle); margin:16px 0;">
         <h4 style="margin:0 0 8px 0; color:var(--color-text-primary); font-size:15px;">${escapeHtml(pageTitle)}</h4>
         <p style="margin:0 0 14px 0; font-size:13px; color:var(--color-text-secondary);">
-          ${item.body ? sanitizeHtml(item.body) : 'Page details registered in course curriculum.'}
+          ${item.body ? item.body : 'Page details registered in course curriculum.'}
         </p>
         ${pageDirectUrl ? `
           <button class="secondary-button" id="previewPageOpenLinkBtn" style="font-size:12px; padding:6px 14px; cursor:pointer;">
@@ -1110,7 +1114,7 @@ function renderPageBodyContent(title, htmlBody, moduleObj) {
         </h2>
       </div>
       <div class="preview-page-content" style="color: var(--color-text-primary); font-size: 14px; line-height: 1.7; min-width: 0; max-width: 100%; overflow-x: hidden;">
-        ${sanitizeHtml(htmlBody)}
+        ${htmlBody}
       </div>
     </div>
   `;

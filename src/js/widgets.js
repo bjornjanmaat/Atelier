@@ -287,16 +287,9 @@ async function syncScheduleFromUrl(forceFetch = false) {
       scheduleSyncStatusText.className = 'schedule-status-indicator syncing';
     }
 
-    let icalText;
-    if (window.canvasDesktop?.fetchUrl) {
-      const fetchRes = await window.canvasDesktop.fetchUrl(url);
-      if (!fetchRes.success) throw new Error(fetchRes.error || 'Failed to fetch calendar');
-      icalText = fetchRes.text;
-    } else {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-      icalText = await res.text();
-    }
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    const icalText = await res.text();
     const events = parseIcalString(icalText);
 
     appState.scheduleEvents = events;
@@ -1378,7 +1371,9 @@ function renderHomeAnnouncementsWidget() {
       day: 'numeric'
     });
 
-    const plainSnippet = (typeof stripHtmlToText === 'function' ? stripHtmlToText(latestAnn.message) : (latestAnn.message || '')).trim() || 'No preview text.';
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = latestAnn.message || '';
+    const plainSnippet = tempDiv.textContent?.trim() || 'No preview text.';
 
     if (dashAnnounceHeroDate) dashAnnounceHeroDate.textContent = dateStr;
     if (dashAnnounceHeroDot) dashAnnounceHeroDot.style.background = color;

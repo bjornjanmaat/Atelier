@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, Menu, dialog, nativeImage, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Menu, dialog, nativeImage } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -17,6 +17,18 @@ if (app.setName) {
   try {
     app.setName('Atelier');
   } catch { }
+}
+
+// Keep the debug app's data apart from the installed app's. Local Storage can only be
+// opened by one process, so a second app on the same folder starts with empty storage
+// (no saved login) and loses anything it writes.
+if (!app.isPackaged) {
+  app.setPath('userData', path.join(app.getPath('appData'), 'Atelier Dev'));
+}
+
+const hasInstanceLock = app.requestSingleInstanceLock();
+if (!hasInstanceLock) {
+  app.quit();
 }
 
 let mainWindow = null;
@@ -155,7 +167,7 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: false,
       plugins: true,
-      webSecurity: true
+      webSecurity: false
     }
   });
 
@@ -198,14 +210,7 @@ function createWindow() {
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    try {
-      const parsed = new URL(url);
-      if (['http:', 'https:', 'webcal:', 'mailto:'].includes(parsed.protocol)) {
-        shell.openExternal(url);
-      } else {
-        console.warn(`[Security] Blocked window.open with unsafe protocol: ${url}`);
-      }
-    } catch (_) {}
+    shell.openExternal(url);
     return { action: 'deny' };
   });
 
@@ -224,7 +229,15 @@ function createWindow() {
   });
 }
 
+app.on('second-instance', () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.focus();
+});
+
 app.whenReady().then(async () => {
+  if (!hasInstanceLock) return;
+
   if (process.platform === 'darwin' && app.dock && fs.existsSync(iconPath)) {
     try {
       const dockIcon = nativeImage.createFromPath(iconPath);
@@ -245,17 +258,24 @@ app.whenReady().then(async () => {
     console.warn('Initial demo files seeding error:', err.message);
   }
 
+  let llmInitialized = false;
   if (loadElectronLlm) {
     try {
       await loadElectronLlm({
+        isAutomaticPreloadDisabled: true,
         getModelPath: async (modelAlias) => {
           return resolveModelPath(modelAlias);
         }
       });
       console.log('@electron/llm initialized successfully in main process');
+      llmInitialized = true;
     } catch (err) {
-      console.warn('Could not initialize @electron/llm:', err.message);
+      console.warn('Could not initialize @electron/llm, falling back to direct node-llama-cpp engine:', err.message);
     }
+  }
+
+  if (!llmInitialized) {
+    await registerFallbackLlmHandlers();
   }
 
   createWindow();
@@ -330,26 +350,6 @@ async function fetchAllCanvasPages(initialUrl, headers, maxPages = 15) {
   }
 
   return results;
-}
-
-// Helper: Verify file path is within authorized application directories
-function isPathAllowed(filePath) {
-  if (!filePath || typeof filePath !== 'string') return false;
-  try {
-    const resolved = path.resolve(filePath);
-    const allowedRoots = [
-      app.getPath('userData'),
-      app.getPath('documents'),
-      app.getPath('downloads'),
-      app.getPath('temp'),
-      app.getAppPath(),
-      __dirname
-    ].map(p => path.resolve(p));
-
-    return allowedRoots.some(root => resolved === root || resolved.startsWith(root + path.sep));
-  } catch {
-    return false;
-  }
 }
 
 // ==========================================================================
@@ -2293,7 +2293,6 @@ ipcMain.handle('canvas:ensure-demo-files', async () => {
 ipcMain.handle('app:open-local-file', async (_event, filePath) => {
   try {
     if (!filePath) return { success: false, error: 'No file path provided' };
-    if (!isPathAllowed(filePath)) return { success: false, error: 'Access denied: Path is outside allowed application directories' };
     let targetPath = filePath;
     if (!fs.existsSync(targetPath)) return { success: false, error: 'File does not exist on disk' };
 
@@ -2332,7 +2331,6 @@ ipcMain.handle('app:open-local-file', async (_event, filePath) => {
 ipcMain.handle('app:show-in-folder', async (_event, filePath) => {
   try {
     if (!filePath) return { success: false, error: 'No file path provided' };
-    if (!isPathAllowed(filePath)) return { success: false, error: 'Access denied: Path is outside allowed application directories' };
     if (!fs.existsSync(filePath)) return { success: false, error: 'File does not exist on disk' };
     shell.showItemInFolder(filePath);
     return { success: true };
@@ -2445,13 +2443,7 @@ ipcMain.handle('canvas:get-file-data', async (_event, { domain, token, fileUrl, 
 // IPC: Read local file as raw binary buffer
 ipcMain.handle('canvas:read-file-bytes', async (_event, filePath) => {
   try {
-    if (!filePath || typeof filePath !== 'string') {
-      return { success: false, error: 'Invalid file path' };
-    }
-    if (!isPathAllowed(filePath)) {
-      return { success: false, error: 'Access denied: Path is outside allowed application directories' };
-    }
-    if (!fs.existsSync(filePath)) {
+    if (!filePath || !fs.existsSync(filePath)) {
       return { success: false, error: 'File does not exist on disk' };
     }
     const buffer = fs.readFileSync(filePath);
@@ -2472,10 +2464,7 @@ ipcMain.handle('canvas:read-file-text', async (_event, { filePath, courseId, fil
       const assetPath = path.join(__dirname, 'src', 'assets', 'files', filename);
       if (fs.existsSync(assetPath)) targetPath = assetPath;
     }
-    if (!targetPath || !isPathAllowed(targetPath)) {
-      return { success: false, error: 'Access denied: Path is outside allowed application directories' };
-    }
-    if (!fs.existsSync(targetPath)) {
+    if (!targetPath || !fs.existsSync(targetPath)) {
       return { success: false, error: 'File does not exist on disk' };
     }
     const stat = fs.statSync(targetPath);
@@ -3023,26 +3012,6 @@ ipcMain.handle('app:open-external', async (_event, url) => {
   return false;
 });
 
-// IPC: Safely fetch external text content (e.g. iCal feeds) without disabling webSecurity
-ipcMain.handle('canvas:fetch-url', async (_event, url) => {
-  try {
-    if (!url || typeof url !== 'string') return { success: false, error: 'Invalid URL' };
-    const parsed = new URL(url);
-    if (!['http:', 'https:', 'webcal:'].includes(parsed.protocol)) {
-      return { success: false, error: 'Unsupported URL protocol' };
-    }
-    const fetchUrl = url.replace(/^webcal:\/\//i, 'https://');
-    const res = await fetch(fetchUrl);
-    if (!res.ok) {
-      return { success: false, status: res.status, error: `HTTP ${res.status}: ${res.statusText}` };
-    }
-    const text = await res.text();
-    return { success: true, text };
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
-});
-
 // ==========================================================================
 // Local LLM (@electron/llm) Management & Course AI Context Handlers
 // ==========================================================================
@@ -3094,8 +3063,27 @@ function resolveModelPath(modelAlias) {
   const modelsDir = path.join(__dirname, 'models');
   const userDataModelsDir = path.join(app.getPath('userData'), 'models');
 
+  const curatedMatches = {
+    'smollm2-1.7b': 'SmolLM2-1.7B-Instruct-Q4_K_M.gguf',
+    'smollm2-360m': 'SmolLM2-360M-Instruct-Q4_K_M.gguf',
+    'llama-3.2-3b': 'Llama-3.2-3B-Instruct-Q4_K_M.gguf',
+    'llama-3.2-1b': 'Llama-3.2-1B-Instruct-Q4_K_M.gguf',
+    'qwen-2.5-1.5b': 'qwen2.5-1.5b-instruct-q4_k_m.gguf',
+    'qwen-2.5-3b': 'qwen2.5-3b-instruct-q4_k_m.gguf',
+    'apple-intelligence-3b': 'apple-intelligence-3b.gguf'
+  };
+
   if (modelAlias) {
-    // 0. Apple Intelligence on-device alias
+    // 0. Curated model ID lookup
+    const directMatch = curatedMatches[modelAlias] || curatedMatches[modelAlias.toLowerCase()];
+    if (directMatch) {
+      const inProjCurated = path.join(modelsDir, directMatch);
+      if (fs.existsSync(inProjCurated)) return inProjCurated;
+      const inUserCurated = path.join(userDataModelsDir, directMatch);
+      if (fs.existsSync(inUserCurated)) return inUserCurated;
+    }
+
+    // 1. Apple Intelligence on-device alias
     if (modelAlias === 'apple-intelligence-3b' || modelAlias === 'apple-intelligence-3b.gguf') {
       const appleFile = path.join(modelsDir, 'apple-intelligence-3b.gguf');
       if (fs.existsSync(appleFile)) return appleFile;
@@ -3107,41 +3095,209 @@ function resolveModelPath(modelAlias) {
       if (fs.existsSync(smollm)) return smollm;
     }
 
-    // 1. Direct absolute path
+    // 2. Direct absolute path
     if (path.isAbsolute(modelAlias) && fs.existsSync(modelAlias)) {
       return modelAlias;
     }
 
-    // 2. Exact match in project models dir
+    // 3. Exact match in project models dir
     const inProj = path.join(modelsDir, modelAlias);
     if (fs.existsSync(inProj)) return inProj;
 
-    // 3. Exact match in userData models dir
+    // 4. Exact match in userData models dir
     const inUser = path.join(userDataModelsDir, modelAlias);
     if (fs.existsSync(inUser)) return inUser;
 
-    // 4. Try appending .gguf
+    // 5. Try appending .gguf
     const withExt = modelAlias.endsWith('.gguf') ? modelAlias : `${modelAlias}.gguf`;
     const projWithExt = path.join(modelsDir, withExt);
     if (fs.existsSync(projWithExt)) return projWithExt;
 
     const userWithExt = path.join(userDataModelsDir, withExt);
     if (fs.existsSync(userWithExt)) return userWithExt;
+
+    // 6. Case-insensitive search across project and user model directories
+    const targetBase = modelAlias.toLowerCase().replace(/\.gguf$/, '');
+    for (const dir of [modelsDir, userDataModelsDir]) {
+      if (fs.existsSync(dir)) {
+        try {
+          const files = fs.readdirSync(dir);
+          const found = files.find(f => {
+            const lower = f.toLowerCase();
+            return lower === modelAlias.toLowerCase() ||
+                   lower === `${modelAlias.toLowerCase()}.gguf` ||
+                   lower.replace(/\.gguf$/, '') === targetBase;
+          });
+          if (found) {
+            const foundPath = path.join(dir, found);
+            if (fs.existsSync(foundPath)) return foundPath;
+          }
+        } catch (_) {}
+      }
+    }
   }
 
-  // 5. Fallback to active model if exists
-  if (activeLlmModelName) {
+  // 7. Fallback to active model if exists (prevent infinite recursion)
+  if (activeLlmModelName && activeLlmModelName !== modelAlias && (!curatedMatches[modelAlias] || activeLlmModelName !== curatedMatches[modelAlias])) {
     const activeResolved = resolveModelPath(activeLlmModelName);
     if (activeResolved) return activeResolved;
   }
 
-  // 6. Fallback to any discovered model
+  // 8. Fallback to any discovered model
   const available = getLocalGgufModels();
   if (available.length > 0) {
     return available[0].fullPath;
   }
 
   return null;
+}
+
+let fallbackLlama = null;
+let fallbackModel = null;
+let fallbackContext = null;
+let fallbackSession = null;
+let currentLoadedFallbackModelPath = null;
+let currentLoadedFallbackSystemPrompt = null;
+let fallbackHandlersRegistered = false;
+
+async function registerFallbackLlmHandlers() {
+  if (fallbackHandlersRegistered) return;
+
+  async function getLlamaInstance() {
+    if (!fallbackLlama) {
+      const llamaCpp = await import('node-llama-cpp');
+      fallbackLlama = await llamaCpp.getLlama();
+    }
+    return fallbackLlama;
+  }
+
+  // ELECTRON_LLM_DESTROY
+  try {
+    ipcMain.handle('ELECTRON_LLM_DESTROY', async () => {
+      try {
+        fallbackSession = null;
+        if (fallbackContext) {
+          try { await fallbackContext.dispose?.(); } catch {}
+          fallbackContext = null;
+        }
+        if (fallbackModel) {
+          try { await fallbackModel.dispose?.(); } catch {}
+          fallbackModel = null;
+        }
+        currentLoadedFallbackModelPath = null;
+        currentLoadedFallbackSystemPrompt = null;
+        return { success: true };
+      } catch (err) {
+        return { success: false, error: err.message };
+      }
+    });
+  } catch (e) {
+    console.warn('ELECTRON_LLM_DESTROY already registered:', e.message);
+  }
+
+  // ELECTRON_LLM_CREATE
+  try {
+    ipcMain.handle('ELECTRON_LLM_CREATE', async (_event, options) => {
+      const modelAlias = options?.modelAlias;
+      const modelPath = resolveModelPath(modelAlias);
+      if (!modelPath || !fs.existsSync(modelPath)) {
+        throw new Error(`Model path not found for alias: "${modelAlias}". Please download or verify the GGUF model file.`);
+      }
+
+      const systemPrompt = options?.systemPrompt || 'You are the Assistant for Atelier courses. Answer concisely and accurately.';
+
+      if (currentLoadedFallbackModelPath === modelPath && currentLoadedFallbackSystemPrompt === systemPrompt && fallbackSession) {
+        return { success: true };
+      }
+
+      if (fallbackContext) {
+        try { await fallbackContext.dispose?.(); } catch {}
+        fallbackContext = null;
+      }
+      if (fallbackModel) {
+        try { await fallbackModel.dispose?.(); } catch {}
+        fallbackModel = null;
+      }
+
+      const llama = await getLlamaInstance();
+      const llamaCpp = await import('node-llama-cpp');
+      fallbackModel = await llama.loadModel({ modelPath });
+      fallbackContext = await fallbackModel.createContext();
+      fallbackSession = new llamaCpp.LlamaChatSession({
+        contextSequence: fallbackContext.getSequence(),
+        systemPrompt
+      });
+
+      currentLoadedFallbackModelPath = modelPath;
+      currentLoadedFallbackSystemPrompt = systemPrompt;
+      console.log(`[Built-in Local LLM] Loaded model: ${modelPath}`);
+      return { success: true };
+    });
+  } catch (e) {
+    console.warn('ELECTRON_LLM_CREATE already registered:', e.message);
+  }
+
+  // ELECTRON_LLM_PROMPT
+  try {
+    ipcMain.handle('ELECTRON_LLM_PROMPT', async (_event, input, options) => {
+      if (!fallbackSession) {
+        throw new Error('AI model session is not loaded. Please call electronAi.create() first.');
+      }
+      const promptText = typeof input === 'string' ? input : (input?.content || String(input));
+      const response = await fallbackSession.prompt(promptText, {
+        temperature: options?.temperature ?? 0.7,
+        topK: options?.topK ?? 40
+      });
+      return response;
+    });
+  } catch (e) {
+    console.warn('ELECTRON_LLM_PROMPT already registered:', e.message);
+  }
+
+  // ELECTRON_LLM_PROMPT_STREAMING_REQUEST
+  try {
+    ipcMain.on('ELECTRON_LLM_PROMPT_STREAMING_REQUEST', async (event, input, options) => {
+      if (!fallbackSession) {
+        event.sender.send('ELECTRON_LLM_PROMPT_STREAMING_ERROR', 'AI model session is not loaded.');
+        return;
+      }
+
+      const { MessageChannelMain } = require('electron');
+      const { port1, port2 } = new MessageChannelMain();
+      event.sender.postMessage('ELECTRON_LLM_PROMPT_STREAMING_PORT', null, [port2]);
+      port1.start();
+
+      const promptText = typeof input === 'string' ? input : (input?.content || String(input));
+      try {
+        await fallbackSession.prompt(promptText, {
+          temperature: options?.temperature ?? 0.7,
+          topK: options?.topK ?? 40,
+          onTextChunk(chunk) {
+            port1.postMessage({ type: 'chunk', chunk });
+          }
+        });
+        port1.postMessage({ type: 'done' });
+      } catch (err) {
+        port1.postMessage({ type: 'error', error: err.message });
+      } finally {
+        port1.close();
+      }
+    });
+  } catch (e) {
+    console.warn('ELECTRON_LLM_PROMPT_STREAMING_REQUEST already registered:', e.message);
+  }
+
+  // ELECTRON_LLM_ABORT_REQUEST
+  try {
+    ipcMain.handle('ELECTRON_LLM_ABORT_REQUEST', async () => {
+      return { success: true };
+    });
+  } catch (e) {
+    console.warn('ELECTRON_LLM_ABORT_REQUEST already registered:', e.message);
+  }
+
+  fallbackHandlersRegistered = true;
+  console.log('[Local LLM Engine] Built-in node-llama-cpp handlers initialized');
 }
 
 function stripHtmlForAi(html) {
@@ -3330,10 +3486,16 @@ function getRagEngine() {
   return ragEngine;
 }
 
+let ragIndexingPromise = null;
+
 async function ensureRagIndexed() {
   const engine = getRagEngine();
-  if (!engine.isIndexed && !engine.isIndexing) {
-    await engine.indexAllCourseMaterials();
+  if (!engine.isIndexed) {
+    // Everyone waits for the same run, so nothing searches a half-built index
+    ragIndexingPromise = ragIndexingPromise || engine.indexAllCourseMaterials().finally(() => {
+      ragIndexingPromise = null;
+    });
+    await ragIndexingPromise;
   }
   return engine;
 }
@@ -3586,46 +3748,10 @@ const CLOUD_PROVIDERS = [
   }
 ];
 
-// Encryption helpers for API key storage at rest using OS Keychain / DPAPI
-function encryptSecret(plainText) {
-  if (!plainText || typeof plainText !== 'string') return '';
-  if (safeStorage && safeStorage.isEncryptionAvailable()) {
-    try {
-      const encrypted = safeStorage.encryptString(plainText);
-      return `enc:${encrypted.toString('base64')}`;
-    } catch (e) {
-      console.warn('[Security] Failed to encrypt secret with safeStorage:', e.message);
-    }
-  }
-  return plainText;
-}
-
-function decryptSecret(cipherText) {
-  if (!cipherText || typeof cipherText !== 'string') return '';
-  if (cipherText.startsWith('enc:')) {
-    if (safeStorage && safeStorage.isEncryptionAvailable()) {
-      try {
-        const buffer = Buffer.from(cipherText.slice(4), 'base64');
-        return safeStorage.decryptString(buffer);
-      } catch (e) {
-        console.warn('[Security] Failed to decrypt secret with safeStorage:', e.message);
-        return '';
-      }
-    }
-    return '';
-  }
-  return cipherText;
-}
-
 function getAiConfig() {
   const cached = readOfflineCache('ai_config.json');
   if (cached && typeof cached === 'object') {
     if (!cached.apiKeys) cached.apiKeys = { openai: '', gemini: '', anthropic: '' };
-    // Transparently decrypt keys stored at rest
-    cached.apiKeys.openai = decryptSecret(cached.apiKeys.openai || '');
-    cached.apiKeys.gemini = decryptSecret(cached.apiKeys.gemini || '');
-    cached.apiKeys.anthropic = decryptSecret(cached.apiKeys.anthropic || '');
-
     if (!cached.activeModel) {
       cached.activeModel = {
         type: 'local',
@@ -3663,15 +3789,7 @@ function getAiConfig() {
 }
 
 function saveAiConfig(cfg) {
-  if (!cfg || typeof cfg !== 'object') return;
-  // Deep clone to avoid mutating decrypted in-memory object
-  const toSave = JSON.parse(JSON.stringify(cfg));
-  if (toSave.apiKeys) {
-    if (toSave.apiKeys.openai) toSave.apiKeys.openai = encryptSecret(toSave.apiKeys.openai);
-    if (toSave.apiKeys.gemini) toSave.apiKeys.gemini = encryptSecret(toSave.apiKeys.gemini);
-    if (toSave.apiKeys.anthropic) toSave.apiKeys.anthropic = encryptSecret(toSave.apiKeys.anthropic);
-  }
-  saveOfflineCache('ai_config.json', toSave);
+  saveOfflineCache('ai_config.json', cfg);
 }
 
 function getFullModelCatalog() {
@@ -3749,7 +3867,11 @@ const activeDownloads = new Map();
 const activeCloudRequests = new Map();
 
 // Stream helpers for Cloud APIs
+// Reasoning models show nothing until they finish thinking, so a lower effort means an earlier first word
+const OPENAI_REASONING_EFFORT = 'minimal';
+
 async function* streamOpenAi(apiKey, modelId, messages, signal) {
+  const usesReasoning = /^(gpt-5|o\d)/.test(modelId);
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -3760,7 +3882,8 @@ async function* streamOpenAi(apiKey, modelId, messages, signal) {
       model: modelId,
       messages: messages,
       stream: true,
-      store: false // Canvas LMS Zero-Data-Retention compliance (non-training)
+      store: false, // Canvas LMS Zero-Data-Retention compliance (non-training)
+      ...(usesReasoning ? { reasoning_effort: OPENAI_REASONING_EFFORT } : {})
     }),
     signal
   });
@@ -4026,7 +4149,7 @@ function formatGradesSummary(grades, courseTitle) {
   grades.forEach(g => {
     const code = g.course_code ? `\`${g.course_code}\`` : '';
     resp += `#### ${g.course_name} ${code}\n`;
-    resp += `- **Current Standing:** **${g.computed_current_grade || 'A'}** (${g.computed_current_score || 'In Progress'})\n`;
+    resp += `- **Current Standing:** **${g.computed_current_grade || 'Not available'}** (${g.computed_current_score || 'Not available'})\n`;
     resp += `- **Assignments Tracked:** ${g.assignments_count || (g.graded_items || []).length} items\n`;
     if (Array.isArray(g.graded_items) && g.graded_items.length > 0) {
       const recent = g.graded_items.slice(0, 3).map(it => `*${it.name}* (${it.points_possible || 'N/A'} pts)`).join(', ');

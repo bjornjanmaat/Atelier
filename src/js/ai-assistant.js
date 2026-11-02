@@ -116,7 +116,8 @@ function initCourseAiAssistant() {
   let activeModelAlias = 'SmolLM2-360M-Instruct-Q4_K_M.gguf';
   let cachedCatalog = null;
   let currentLoadedModelFilename = null;
-  let currentLoadedSystemPrompt = null;
+  let pendingModelLoad = null;
+  let conversationHistory = [];
 
   function updateWelcomeCardStats() {
     if (!welcomeCard) return;
@@ -901,7 +902,7 @@ function initCourseAiAssistant() {
         aiApi.destroy().catch(() => { });
       }
       currentLoadedModelFilename = null;
-      currentLoadedSystemPrompt = null;
+      conversationHistory = [];
     });
   }
 
@@ -1168,7 +1169,10 @@ function initCourseAiAssistant() {
       }
 
       stopBtn.classList.add('hidden');
-      if (sendBtn) sendBtn.disabled = false;
+      if (sendBtn) {
+        sendBtn.classList.remove('hidden');
+        sendBtn.disabled = false;
+      }
     });
   }
 
@@ -1374,17 +1378,36 @@ function initCourseAiAssistant() {
     bubbleEl.parentElement.appendChild(actions);
   }
 
-  async function ensureModelLoaded(systemPrompt) {
+  // Kept free of per-question content: @electron/llm restarts its process and reloads the
+  // model whenever the create() options change, and local sessions remember earlier turns.
+  const ASSISTANT_SYSTEM_PROMPT = `You are the study assistant in Atelier, helping a university student with their Canvas courses.
+
+Rules:
+- Messages may start with COURSE DATA, which holds current facts for that question. If it conflicts with earlier messages, trust the latest COURSE DATA.
+- For facts about the student's courses (deadlines, grades, policies, schedules, files), use only COURSE DATA. Never guess them. If they are missing, say you could not find them in the course data.
+- For general topics and concepts, always answer from your own knowledge, using COURSE DATA where it is relevant. Ignore COURSE DATA that does not relate to the question, and do not mention it.
+- Answer the exact question first and be concise. Only report the course or item that was asked about.
+- When asked for a list, include every matching item in COURSE DATA. Do not drop any.
+- Do not mention tools, JSON, IDs, or how the data was retrieved. Never output JSON.
+- When you use an excerpt, cite it as [Source: <Document Title>, p. <Page#>] or [Source: <Document Title>, <Section>]. Do not cite grades or deadlines.`;
+
+  const MAX_HISTORY_MESSAGES = 8;
+  const MAX_HISTORY_MESSAGE_CHARS = 1500;
+  const REPLY_RENDER_INTERVAL_MS = 50;
+
+  function ensureModelLoaded() {
     const aiApi = window.electronAi || window.canvasDesktop?.electronAi;
     if (!aiApi) {
-      throw new Error('@electron/llm API is not available. Please verify local model setup.');
+      return Promise.reject(new Error('@electron/llm API is not available. Please verify local model setup.'));
     }
 
     const modelToLoad = activeModelConfig.filename || activeModelAlias || 'SmolLM2-360M-Instruct-Q4_K_M.gguf';
 
-    // If already loaded with the same model and system prompt, skip re-initialization
-    if (currentLoadedModelFilename === modelToLoad && currentLoadedSystemPrompt === systemPrompt) {
-      return;
+    if (currentLoadedModelFilename === modelToLoad) {
+      return Promise.resolve();
+    }
+    if (pendingModelLoad?.model === modelToLoad) {
+      return pendingModelLoad.promise;
     }
 
     if (statusIndicator) {
@@ -1392,26 +1415,29 @@ function initCourseAiAssistant() {
       statusIndicator.title = 'Initializing Model...';
     }
 
-    try {
-      await aiApi.create({
-        modelAlias: modelToLoad,
-        systemPrompt: systemPrompt || 'You are the Assistant for Atelier courses. Answer concisely and accurately.',
-        temperature: 0.6,
-        topK: 40
-      });
+    const promise = aiApi.create({
+      modelAlias: modelToLoad,
+      systemPrompt: ASSISTANT_SYSTEM_PROMPT,
+      temperature: 0.2,
+      topK: 40
+    }).then(() => {
       currentLoadedModelFilename = modelToLoad;
-      currentLoadedSystemPrompt = systemPrompt;
       if (statusIndicator) {
         statusIndicator.className = 'ai-status-indicator ready';
         statusIndicator.title = 'Local LLM Ready';
       }
-    } catch (err) {
+    }).catch((err) => {
       if (statusIndicator) {
         statusIndicator.className = 'ai-status-indicator';
         statusIndicator.title = 'Model Error';
       }
       throw err;
-    }
+    }).finally(() => {
+      if (pendingModelLoad?.promise === promise) pendingModelLoad = null;
+    });
+
+    pendingModelLoad = { model: modelToLoad, promise };
+    return promise;
   }
 
   // Tool Calling & Execution Engine (Silent in UI - Debug Output in Terminal Only)
@@ -1449,43 +1475,114 @@ function initCourseAiAssistant() {
   function detectToolIntent(query, courseId) {
     if (!query) return null;
     const q = query.toLowerCase();
+    const hasCourse = Boolean(courseId && courseId !== 'all');
+    const courseParams = hasCourse ? { course_id: courseId } : {};
 
-    // 1. Deadlines / upcoming assignments
-    if (q.includes('deadline') || q.includes('due') || q.includes('what is due') || q.includes('upcoming') || q.includes('assignments due')) {
-      return { tool: 'get_upcoming_deadlines', parameters: { days_ahead: 14 } };
+    // Policy questions come first: "how is the final grade calculated" is about the syllabus, not the student's marks
+    if (/\b(syllabus|office hours?|grading (policy|scheme|breakdown)|late (policy|days?|penalty|submissions?)|attendance policy)\b|\bhow (is|are)\b.*\b(grades?|graded|calculated)\b/.test(q)) {
+      return hasCourse ? { tool: 'get_course_syllabus', parameters: courseParams, useKnowledgeBase: true } : null;
     }
 
-    // 2. Grades / score / GPA
-    if (q.includes('grade') || q.includes('score') || q.includes('gpa') || q.includes('standing') || q.includes('how am i doing')) {
-      return { tool: 'get_student_grades', parameters: courseId && courseId !== 'all' ? { course_id: courseId } : {} };
+    // "\bdue\b" alone would also match "late due to bleed problems"
+    if (/\b(deadlines?|upcoming|what('s| is)? due|assignments? due|due (date|soon|next|today|tomorrow|this|in|on|by)|what assignments|my assignments)\b|\bwhen\b.*\bdue\b|\bwhat do i have to (do|submit|hand in)\b/.test(q)) {
+      let daysAhead = 14;
+      if (/\bwhen\b.*\bdue\b/.test(q)) daysAhead = 120;
+      else if (/\bmonth\b/.test(q)) daysAhead = 31;
+      else if (/\b(today|tonight)\b/.test(q)) daysAhead = 1;
+      else if (/\btomorrow\b/.test(q)) daysAhead = 2;
+      else if (/\b(this|one|a) week\b|\b7 days\b/.test(q)) daysAhead = 7;
+      return { tool: 'get_upcoming_deadlines', parameters: { ...courseParams, days_ahead: daysAhead } };
     }
 
-    // 3. Announcements
-    if (q.includes('announcement') || q.includes('news') || q.includes('update') || q.includes('latest message')) {
-      return { tool: 'list_announcements', parameters: { course_id: courseId, limit: 5 } };
+    if (/\b(my|current|overall)\s+(\w+\s+){0,2}(grades?|scores?|marks?|gpa|standing)\b|\bgrades?\s+(in|for)\b|\bwhat (grade|score|mark)\b.*\b(i|my)\b|\bdid i (get|score|pass)\b|\bhow am i doing\b|^(show |list |get )?(grades?|gpa)\??$/.test(q)) {
+      return { tool: 'get_student_grades', parameters: courseParams };
     }
 
-    // 4. Syllabus / grading policy / office hours
-    if (q.includes('syllabus') || q.includes('office hour') || q.includes('grading policy') || q.includes('late policy')) {
-      return { tool: 'get_course_syllabus', parameters: { course_id: courseId || '48201' } };
+    if (/\bannouncements?\b|\b(any|latest|recent) (news|updates?)\b|\bwhat('s| is) new\b/.test(q)) {
+      return { tool: 'list_announcements', parameters: { ...courseParams, limit: 5 } };
     }
 
-    // 5. Schedule / classes / calendar
-    if (q.includes('schedule') || q.includes('calendar') || q.includes('what class') || q.includes('lecture time') || q.includes('meeting')) {
+    if (/\b(schedule|timetable|calendar)\b|\b(next|today'?s?|tomorrow'?s?) (class|classes|lectures?)\b|\bwhat classes\b|\b(lectures?|class(es)?) (today|tomorrow|this week)\b|\bwhen is my\b.*\b(class|lecture)\b/.test(q)) {
       return { tool: 'get_student_schedule', parameters: {} };
     }
 
-    // 6. Modules
-    if (q.includes('module') || q.includes('lessons') || q.includes('curriculum') || q.includes('topics covered')) {
-      return { tool: 'list_modules', parameters: { course_id: courseId || '48201' } };
+    if (hasCourse && /\b(list|show|which|what) (are |the |all |my )*modules?\b/.test(q)) {
+      return { tool: 'list_modules', parameters: courseParams };
     }
 
-    // 7. Files / readings / documents
-    if (q.includes('file') || q.includes('reading') || q.includes('slides') || q.includes('pdf') || q.includes('handout')) {
-      return { tool: 'list_course_files', parameters: { course_id: courseId } };
+    if (/\b(list|show)\b.*\b(files|slides|readings|pdfs|handouts|documents)\b|\b(which|what) (files|slides|readings|pdfs|handouts|documents)\b/.test(q)) {
+      return { tool: 'list_course_files', parameters: courseParams };
     }
 
     return null;
+  }
+
+  function findMentionedCourse(query) {
+    const q = query.toLowerCase();
+    return (appState.courses || []).find((c) => {
+      const name = (c.name || '').toLowerCase();
+      const code = (c.course_code || '').toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return (name && q.includes(name)) || (code && new RegExp(`\\b${code}\\b`).test(q));
+    }) || null;
+  }
+
+  // A follow-up like "give me an example of that" has no searchable terms of its own
+  function buildRetrievalQuery(query) {
+    const lastQuestion = [...conversationHistory].reverse().find(m => m.role === 'user')?.content;
+    const isFollowUp = query.split(/\s+/).length <= 12 && /\b(that|this|it|those|these|them|example|more|again|why)\b/i.test(query);
+    return lastQuestion && isFollowUp ? `${lastQuestion} ${query}` : query;
+  }
+
+  // Small local models drop items when copying from dense JSON, so they get a counted, numbered list
+  function toNumberedLines(data) {
+    const isIdKey = key => key === 'id' || key.endsWith('_id');
+    const lines = [];
+    Object.entries(data || {}).forEach(([key, value]) => {
+      if (isIdKey(key)) return;
+      if (Array.isArray(value)) {
+        lines.push(`${key} (${value.length} in total):`);
+        value.forEach((item, idx) => {
+          const fields = item && typeof item === 'object'
+            ? Object.entries(item)
+              .filter(([k]) => !isIdKey(k))
+              .map(([k, v]) => `${k}: ${v && typeof v === 'object' ? JSON.stringify(v) : v}`)
+              .join('; ')
+            : item;
+          lines.push(`${idx + 1}. ${fields}`);
+        });
+      } else if (value && typeof value === 'object') {
+        lines.push(`${key}: ${JSON.stringify(value)}`);
+      } else {
+        lines.push(`${key}: ${value}`);
+      }
+    });
+    return lines.join('\n');
+  }
+
+  // Local models reliably drop items from longer lists. A deadline must never go missing, so when
+  // the reply is listing deadlines, add any it left out from the real data.
+  function appendMissingDeadlines(reply, toolName, toolData) {
+    const deadlines = toolData?.deadlines;
+    if (toolName !== 'get_upcoming_deadlines' || !Array.isArray(deadlines) || !(toolData.days_evaluated >= 7)) return reply;
+
+    const replyLower = reply.toLowerCase();
+    const isMentioned = d => replyLower.includes(String(d.assignment_name || '').toLowerCase());
+    const missing = deadlines.filter(d => !isMentioned(d));
+    if (deadlines.length - missing.length < 2 || missing.length === 0) return reply;
+
+    const lines = missing.map((d) => {
+      const dueDate = new Date(d.due_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+      return `- ${d.assignment_name} (${d.course_code || d.course_name}): ${dueDate}`;
+    });
+    return `${reply}\n\nAlso due:\n${lines.join('\n')}`;
+  }
+
+  function formatToolDataForPrompt(toolName, data, maxChars, asJson) {
+    const text = asJson
+      ? JSON.stringify(data, (key, value) => (key === 'id' || key.endsWith('_id') ? undefined : value))
+      : toNumberedLines(data);
+    const clipped = text.length > maxChars ? `${text.slice(0, maxChars)}... (truncated)` : text;
+    return `Canvas data (${toolName}):\n${clipped}`;
   }
 
   async function handleSendMessage(presetQuery, directToolCall = null) {
@@ -1507,9 +1604,15 @@ function initCourseAiAssistant() {
     isGenerating = true;
     appState.aiIsGenerating = true;
     if (stopBtn) stopBtn.classList.remove('hidden');
-    if (sendBtn) sendBtn.disabled = true;
+    if (sendBtn) {
+      sendBtn.classList.add('hidden');
+      sendBtn.disabled = true;
+    }
 
     currentAbortUUID = 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+
+    let replyRenderTimer = null;
+    let latestReplyText = '';
 
     try {
       const selectorVal = courseSelector ? courseSelector.value : 'all';
@@ -1531,191 +1634,215 @@ function initCourseAiAssistant() {
         selectedCourseId = selectorVal;
       }
 
+      const mentionedCourse = scope === 'global' ? findMentionedCourse(query) : null;
+      if (mentionedCourse) {
+        scope = 'course';
+        selectedCourseId = String(mentionedCourse.id);
+      }
+
       setStatus('Searching course knowledge...', 'Consulting syllabus, assignments & materials');
 
-      // Tool Call Execution: Direct from button or intent-detected (Silent in UI, terminal debug only)
-      let toolResult = null;
+      // The app decides what to look up. The model only ever sees the results.
       const activeTool = directToolCall || detectToolIntent(query, selectedCourseId);
-      if (activeTool && activeTool.tool) {
-        toolResult = await executeToolCallSilently(activeTool.tool, activeTool.parameters);
-      }
+      const useKnowledgeBase = !activeTool || activeTool.useKnowledgeBase === true;
+      const [toolResult, courseContextData] = await Promise.all([
+        activeTool?.tool ? executeToolCallSilently(activeTool.tool, activeTool.parameters) : null,
+        useKnowledgeBase && window.canvasDesktop?.getCourseAiContext
+          ? window.canvasDesktop.getCourseAiContext({
+            courseId: selectedCourseId,
+            query: buildRetrievalQuery(query),
+            scope: scope,
+            activeFilePath: activeFilePath,
+            activeDocTitle: activeDocTitle,
+            modelType: activeModelConfig.type,
+            modelAlias: activeModelConfig.filename || activeModelConfig.id
+          })
+          : null
+      ]);
 
-      let courseContextData = null;
-      if (window.canvasDesktop?.getCourseAiContext) {
-        courseContextData = await window.canvasDesktop.getCourseAiContext({
-          courseId: selectedCourseId,
-          query: query,
-          scope: scope,
-          activeFilePath: activeFilePath,
-          activeDocTitle: activeDocTitle,
-          modelType: activeModelConfig.type,
-          modelAlias: activeModelConfig.filename || activeModelConfig.id
-        });
-      }
+      const isCloudModel = activeModelConfig.type === 'cloud';
+      const toolDataLimit = isCloudModel ? 20000 : 3000;
+      const selectedCourse = (appState.courses || []).find(c => String(c.id) === String(selectedCourseId));
+      const courseName = selectedCourse?.name || courseContextData?.courseName || 'All Enrolled Courses';
+      const hasExcerpts = (courseContextData?.retrievedSources || []).length > 0;
 
-      const courseName = courseContextData?.courseName || (selectedCourseId === 'all' ? 'All Enrolled Courses' : 'Course');
-      const contextText = courseContextData?.contextText || '';
+      const knowledgeParts = [
+        `Today is ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.`,
+        `Selected scope: ${courseName}.`
+      ];
+      if (toolResult?.success) {
+        knowledgeParts.push(formatToolDataForPrompt(activeTool.tool, toolResult.data, toolDataLimit, isCloudModel));
+      }
+      if (hasExcerpts && courseContextData.contextText) {
+        knowledgeParts.push(courseContextData.contextText);
+      }
+      const knowledge = knowledgeParts.join('\n\n');
 
       setStatus('Synthesizing answer...', 'Generating response with verified course content');
 
-      let toolDataSection = '';
-      let userPrompt = query;
-      if (toolResult && toolResult.success) {
-        toolDataSection = `\n\n### REAL-TIME DATA RETRIEVED FROM CANVAS (TOOL: ${activeTool.tool}):\n` + JSON.stringify(toolResult.data, null, 2);
-        userPrompt = `${query}\n\n[Retrieved Data from Canvas Tool "${activeTool.tool}"]:\n` + JSON.stringify(toolResult.data, null, 2) + `\n\nPlease provide a direct, insightful, and comprehensive student summary of this retrieved data.`;
-      }
+      const stripToolCalls = (text) => (window.canvasAiTools?.stripToolCalls ? window.canvasAiTools.stripToolCalls(text) : text);
 
-      const toolsPrompt = window.canvasAiTools?.getPromptDefinition ? window.canvasAiTools.getPromptDefinition() : '';
+      // Tool syntax never reaches the chat, including while it is still streaming in
+      const flushReply = () => {
+        clearTimeout(replyRenderTimer);
+        replyRenderTimer = null;
+        const visibleText = stripToolCalls(latestReplyText);
+        if (!visibleText) return;
+        if (cursorEl.parentElement) cursorEl.remove();
+        bubbleEl.innerHTML = renderSimpleMarkdown(visibleText);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      };
 
-      const systemPrompt = `You are the Academic AI Teaching Assistant in Atelier for "${courseName}".
-You have DIRECT AND FULL ACCESS to the student's Canvas LMS coursework and local study materials:
-- All enrolled courses, full syllabi, and schedules
-- All learning modules and all individual module items/lessons
-- All course pages, reading lists, lecture notes, and lab instructions
-- All assignments, problem sets, quizzes, deadlines, points, submission types, and rubrics
-- All course announcements and discussions
-- All course documents, handouts, slides, and files (including complete text extracted from PDFs and code files)
+      // Re-rendering the whole message for every chunk gets slower as the answer grows
+      const showReply = (rawText) => {
+        latestReplyText = rawText;
+        if (replyRenderTimer === null) {
+          replyRenderTimer = setTimeout(flushReply, REPLY_RENDER_INTERVAL_MS);
+        }
+      };
 
-VERIFIABLE CITATION PROTOCOL (MANDATORY):
-1. Always base your statements strictly and directly on the provided Canvas Knowledge Base.
-2. For EVERY claim, policy, deadline, formula, or grading criterion, you MUST provide an explicit citation using the exact format:
-   "[Source: <Document Title>, p. <Page#>]" for slides and PDFs, or
-   "[Source: <Document Title>, <Section>]" for syllabi, modules, and assignment briefs.
-   Examples:
-   - "[Source: CS301_Syllabus_Fall2026.pdf, p. 1]"
-   - "[Source: Assignment 2 Brief, Grading Rubric Criteria]"
-   - "[Source: Lecture 3: The Raft Consensus Algorithm, Safety]"
-3. If the requested information is not in the provided excerpts, clearly state that it is not found in local materials. Do not invent details.
-
-${toolsPrompt}
-
-CANVAS ACADEMIC KNOWLEDGE BASE:
-${contextText}${toolDataSection}`;
-
-      let responseFull = '';
-
-      if (activeModelConfig.type === 'cloud') {
+      const generateCloudReply = (promptKnowledge, question) => new Promise((resolve, reject) => {
         // Cloud API Streaming
         if (!window.canvasDesktop?.startCloudStream) {
-          throw new Error('Cloud AI streaming is not available');
+          reject(new Error('Cloud AI streaming is not available'));
+          return;
         }
 
         const providerId = activeModelConfig.providerId || 'openai';
         const modelId = activeModelConfig.modelId || activeModelConfig.id || 'gpt-5';
+        let cloudReply = '';
 
-        await new Promise((resolve, reject) => {
-          let streamDone = false;
+        const removeListener = () => {
+          if (window.canvasDesktop?.removeCloudChunkListener) {
+            window.canvasDesktop.removeCloudChunkListener();
+          }
+        };
 
-          const removeListener = () => {
-            if (window.canvasDesktop?.removeCloudChunkListener) {
-              window.canvasDesktop.removeCloudChunkListener();
-            }
-          };
+        window.canvasDesktop.onCloudChunk((data) => {
+          if (data.requestUUID !== currentAbortUUID) return;
 
-          window.canvasDesktop.onCloudChunk((data) => {
-            if (data.requestUUID !== currentAbortUUID) return;
-
-            if (data.error) {
-              removeListener();
-              reject(new Error(data.error));
-              return;
-            }
-
-            if (data.chunk) {
-              if (cursorEl.parentElement) cursorEl.remove();
-              responseFull += data.chunk;
-              bubbleEl.innerHTML = renderSimpleMarkdown(responseFull);
-              messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-
-            if (data.done) {
-              streamDone = true;
-              removeListener();
-              resolve();
-            }
-          });
-
-          window.canvasDesktop.startCloudStream({
-            requestUUID: currentAbortUUID,
-            provider: providerId,
-            modelId: modelId,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt }
-            ]
-          }).then((res) => {
-            if (!res || !res.success) {
-              removeListener();
-              reject(new Error(res?.error || 'Failed to start cloud stream'));
-            }
-          }).catch(err => {
+          if (data.error) {
             removeListener();
-            reject(err);
-          });
+            reject(new Error(data.error));
+            return;
+          }
+
+          if (data.chunk) {
+            cloudReply += data.chunk;
+            showReply(cloudReply);
+          }
+
+          if (data.done) {
+            removeListener();
+            resolve(cloudReply);
+          }
         });
 
-      } else {
+        window.canvasDesktop.startCloudStream({
+          requestUUID: currentAbortUUID,
+          provider: providerId,
+          modelId: modelId,
+          messages: [
+            { role: 'system', content: `${ASSISTANT_SYSTEM_PROMPT}\n\nThe student is asking about "${courseName}".\n\nCOURSE DATA:\n${promptKnowledge}` },
+            ...conversationHistory,
+            { role: 'user', content: question }
+          ]
+        }).then((res) => {
+          if (!res || !res.success) {
+            removeListener();
+            reject(new Error(res?.error || 'Failed to start cloud stream'));
+          }
+        }).catch(err => {
+          removeListener();
+          reject(err);
+        });
+      });
+
+      const runLocalPrompt = async (promptContent) => {
         // Local GGUF Engine
         const aiApi = window.electronAi || window.canvasDesktop?.electronAi;
         if (!aiApi) throw new Error('@electron/llm API is not available');
 
-        const runLocalPrompt = async (sysPrompt, promptContent) => {
-          await ensureModelLoaded(sysPrompt);
-          let localReply = '';
-          if (typeof aiApi.promptStreaming === 'function') {
-            const stream = await aiApi.promptStreaming(promptContent, {
-              requestUUID: currentAbortUUID,
-              timeout: 60000
-            });
-            if (cursorEl && cursorEl.parentElement) cursorEl.remove();
-            for await (const chunk of stream) {
-              if (!isGenerating) break;
-              localReply += chunk;
-              bubbleEl.innerHTML = renderSimpleMarkdown(localReply);
-              messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-          } else {
-            const reply = await aiApi.prompt(promptContent, {
-              requestUUID: currentAbortUUID,
-              timeout: 60000
-            });
-            if (cursorEl && cursorEl.parentElement) cursorEl.remove();
-            localReply = reply || 'No answer returned from model.';
-            bubbleEl.innerHTML = renderSimpleMarkdown(localReply);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        await ensureModelLoaded();
+        const promptOptions = { requestUUID: currentAbortUUID, timeout: 60000, temperature: 0.2, topK: 40 };
+        let localReply = '';
+        if (typeof aiApi.promptStreaming === 'function') {
+          const stream = await aiApi.promptStreaming(promptContent, promptOptions);
+          for await (const chunk of stream) {
+            if (!isGenerating) break;
+            localReply += chunk;
+            showReply(localReply);
           }
-          return localReply;
-        };
+        } else {
+          localReply = await aiApi.prompt(promptContent, promptOptions) || '';
+          showReply(localReply);
+        }
+        return localReply;
+      };
 
+      const generateLocalReply = async (promptKnowledge, question) => {
         try {
-          responseFull = await runLocalPrompt(systemPrompt, userPrompt);
+          return await runLocalPrompt(`COURSE DATA:\n${promptKnowledge}\n\nQUESTION: ${question}`);
         } catch (localErr) {
           const errMsg = localErr?.message || '';
           if (errMsg.includes('compress chat history') || errMsg.includes('context shift') || errMsg.includes('context size') || errMsg.includes('too long prompt')) {
             console.warn('Context shift triggered. Resetting session and applying compact fallback context...');
+            const aiApi = window.electronAi || window.canvasDesktop?.electronAi;
             if (aiApi && typeof aiApi.destroy === 'function') {
               try { await aiApi.destroy(); } catch { }
             }
             currentLoadedModelFilename = null;
-            currentLoadedSystemPrompt = null;
-
-            // Compact fallback prompt ensuring under 3,500 chars
-            const compactContext = (contextText || '').slice(0, 3500);
-            const fallbackPrompt = `You are the Course AI Teaching Assistant for "${courseName}".
-Answer concisely and accurately using this course knowledge:
-${compactContext}`;
 
             setStatus('Refining context...', 'Regenerating with compact focus');
-            responseFull = await runLocalPrompt(fallbackPrompt, userPrompt);
-          } else {
-            throw localErr;
+            return await runLocalPrompt(`COURSE DATA:\n${promptKnowledge.slice(0, 3500)}\n\nQUESTION: ${question}`);
           }
+          throw localErr;
+        }
+      };
+
+      const generateReply = isCloudModel ? generateCloudReply : generateLocalReply;
+
+      let rawReply = await generateReply(knowledge, query);
+      let responseFull = stripToolCalls(rawReply);
+
+      // The model answered with nothing but a tool call: fulfil it if it is valid, then ask once more for prose
+      if (!responseFull && isGenerating) {
+        const requestedTool = window.canvasAiTools?.parseToolCall ? window.canvasAiTools.parseToolCall(rawReply) : null;
+        const requestedResult = requestedTool ? await executeToolCallSilently(requestedTool.tool, requestedTool.parameters) : null;
+        const retryKnowledge = requestedResult?.success
+          ? `${knowledge}\n\n${formatToolDataForPrompt(requestedTool.tool, requestedResult.data, toolDataLimit, isCloudModel)}`
+          : knowledge;
+        rawReply = await generateReply(retryKnowledge, `${query}\n\nAnswer in plain sentences. Do not output JSON or tool calls.`);
+        responseFull = stripToolCalls(rawReply);
+      }
+
+      if (!responseFull && isGenerating) {
+        responseFull = 'I could not put together an answer to that from your course data. Try rephrasing the question or selecting a specific course.';
+        showReply(responseFull);
+      }
+
+      if (responseFull && isGenerating && toolResult?.success) {
+        const completeReply = appendMissingDeadlines(responseFull, activeTool.tool, toolResult.data);
+        if (completeReply !== responseFull) {
+          responseFull = completeReply;
+          showReply(responseFull);
         }
       }
 
+      if (responseFull) {
+        conversationHistory.push(
+          { role: 'user', content: query },
+          { role: 'assistant', content: responseFull.slice(0, MAX_HISTORY_MESSAGE_CHARS) }
+        );
+        conversationHistory = conversationHistory.slice(-MAX_HISTORY_MESSAGES);
+      }
+
+      if (responseFull) latestReplyText = responseFull;
+      flushReply();
       attachMessageActions(bubbleEl, responseFull, courseContextData?.retrievedSources || []);
 
     } catch (err) {
+      clearTimeout(replyRenderTimer);
       if (cursorEl.parentElement) cursorEl.remove();
       bubbleEl.innerHTML = `
         <div style="color: #f87171; display: flex; flex-direction: column; gap: 8px;">
@@ -1732,7 +1859,10 @@ ${compactContext}`;
       isGenerating = false;
       appState.aiIsGenerating = false;
       if (stopBtn) stopBtn.classList.add('hidden');
-      if (sendBtn) sendBtn.disabled = false;
+      if (sendBtn) {
+        sendBtn.classList.remove('hidden');
+        sendBtn.disabled = false;
+      }
       currentAbortUUID = null;
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
@@ -1744,7 +1874,13 @@ ${compactContext}`;
 
   window.onAiPageActivated = () => {
     updateCourseSelector();
-    refreshModelsCatalog();
+    // Builds the document index ahead of time so the first question doesn't wait for it
+    window.canvasDesktop?.getCourseAiContext?.({ courseId: 'all', query: '', scope: 'global', modelType: 'local' })
+      .catch((err) => console.warn('Could not prepare course index:', err.message));
+    refreshModelsCatalog().then(() => {
+      // Load ahead of time so the first question doesn't wait for the model
+      if (activeModelConfig.type !== 'cloud') return ensureModelLoaded();
+    }).catch((err) => console.warn('Could not preload AI model:', err.message));
   };
 }
 

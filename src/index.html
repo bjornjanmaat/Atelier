@@ -680,8 +680,8 @@
                   <div class="grade-overview-left">
                     <span class="grade-metric-label">Current Calculated Grade</span>
                     <div class="grade-score-display">
-                      <span class="grade-big-pct" id="gradeBigPct">96.4%</span>
-                      <span class="grade-big-letter" id="gradeBigLetter">A</span>
+                      <span class="grade-big-pct" id="gradeBigPct">--</span>
+                      <span class="grade-big-letter hidden" id="gradeBigLetter"></span>
                     </div>
                     <p class="grade-metric-sub" id="gradeStatusSub">Based on graded assignments and projects</p>
                   </div>
@@ -1319,7 +1319,6 @@
                           placeholder="Write a reply... (⌘+Enter to send)" rows="3"></textarea>
                       </div>
                       <div class="inbox-reply-footer">
-                        <span class="inbox-reply-shortcut-hint">Press <strong>⌘ + Enter</strong> to send</span>
                         <button type="submit" class="primary-button small-btn inbox-reply-send-btn"
                           id="inboxReplySendBtn">
                           <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
@@ -1834,9 +1833,9 @@
                       placeholder="Ask anything about your courses or assignments..." rows="1" autocomplete="off"
                       spellcheck="false"></textarea>
                     <div class="ai-input-actions">
-                      <button type="button" class="ai-stop-btn hidden" id="aiStopBtn" title="Stop generating">
+                      <button type="button" class="ai-stop-btn hidden" id="aiStopBtn" title="Stop generating"
+                        aria-label="Stop generating">
                         <span class="ai-stop-square"></span>
-                        <span>Stop</span>
                       </button>
                       <button type="submit" class="ai-send-btn" id="aiSendBtn" title="Send message (Return)"
                         aria-label="Send message">

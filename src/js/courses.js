@@ -181,8 +181,8 @@ async function fetchAndRenderCourses(domain, token) {
           if (cached) fallbackCourses = filterActiveCoursesOnly(JSON.parse(cached));
         } catch { }
       }
-      if (!fallbackCourses || fallbackCourses.length === 0) {
-        fallbackCourses = (typeof getMockAccountData === 'function' && appState.isDemo)
+      if ((!fallbackCourses || fallbackCourses.length === 0) && appState.isDemo) {
+        fallbackCourses = typeof getMockAccountData === 'function'
           ? getMockAccountData().courses
           : DEMO_DATA.courses;
       }
@@ -197,8 +197,8 @@ async function fetchAndRenderCourses(domain, token) {
         if (cached) fallbackCourses = JSON.parse(cached);
       } catch { }
     }
-    if (!fallbackCourses || fallbackCourses.length === 0) {
-      fallbackCourses = (typeof getMockAccountData === 'function' && appState.isDemo)
+    if ((!fallbackCourses || fallbackCourses.length === 0) && appState.isDemo) {
+      fallbackCourses = typeof getMockAccountData === 'function'
         ? getMockAccountData().courses
         : DEMO_DATA.courses;
     }
