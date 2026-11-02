@@ -1,7 +1,7 @@
 {
   "name": "atelier",
   "productName": "Atelier",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Atelier — Next-Generation Canvas LMS Desktop Experience",
   "main": "main.js",
   "scripts": {
